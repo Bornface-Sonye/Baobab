@@ -1,5 +1,5 @@
 """
-Django settings for investing platform (tracker -> investing app upgrade)
+Django settings for investing platform 
 """
 
 from pathlib import Path
@@ -34,7 +34,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     # INVESTING APP MODULE
-    'investing',  # renamed from complaints
+    'invest',  # renamed from complaints
 ]
 
 
@@ -52,7 +52,7 @@ MIDDLEWARE = [
 ]
 
 
-ROOT_URLCONF = 'investing.urls'
+ROOT_URLCONF = 'invest.urls'
 
 
 # =========================
@@ -75,7 +75,7 @@ TEMPLATES = [
 ]
 
 
-WSGI_APPLICATION = 'tracker.wsgi.application'
+WSGI_APPLICATION = 'baobab.wsgi.application'
 
 
 # =========================
@@ -114,8 +114,8 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
-EMAIL_HOST_USER = os.environ.get("EMAIL_USER", "your-email@gmail.com")
-EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_PASS", "your-app-password")
+EMAIL_HOST_USER = os.environ.get("EMAIL_USER", "bornfacesonye@gmail.com")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_PASS", "BORNFACE@35033637")
 
 
 # =========================

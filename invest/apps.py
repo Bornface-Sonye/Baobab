@@ -1,7 +1,7 @@
 from django.apps import AppConfig
 
 
-class InvestingConfig(AppConfig):
+class InvestConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'investing'
+    name = 'invest'
     verbose_name = 'Investment Platform'
