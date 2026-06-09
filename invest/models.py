@@ -13,7 +13,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 # INVESTOR (was Student)
 # =========================
 class Investor(models.Model):
-    national_id_no = models.DecimalField(primary_key=True, max_digits=15, help_text="Enter National Identification Number in the format 35033637")
+    national_id_no = models.DecimalField(primary_key=True, max_digits=8, help_text="Enter National Identification Number in the format 35033637")
     email_address = models.EmailField(max_length=200, help_text="Please Enter Investor Email Address")
     username = models.EmailField(unique=True, max_length=200, help_text="Enter a valid Username")
     username = models.CharField(unique=True, max_length=150)
