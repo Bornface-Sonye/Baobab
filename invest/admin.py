@@ -10,8 +10,8 @@ from .models import (
 # =========================
 @admin.register(Investor)
 class InvestorAdmin(admin.ModelAdmin):
-    list_display = ('username', 'email', 'cash_balance')
-    search_fields = ('username', 'email')
+    list_display = ('username', 'email_address', 'cash_balance')
+    search_fields = ('username', 'email_address')
 
 
 # =========================
@@ -19,9 +19,9 @@ class InvestorAdmin(admin.ModelAdmin):
 # =========================
 @admin.register(Asset)
 class AssetAdmin(admin.ModelAdmin):
-    list_display = ('name', 'symbol', 'current_price', 'category')
+    list_display = ('name', 'current_price', 'category')
     list_filter = ('category',)
-    search_fields = ('name', 'symbol')
+    search_fields = ('name', 'category')
 
 
 @admin.register(AssetCategory)
@@ -65,24 +65,13 @@ class WalletTransactionAdmin(admin.ModelAdmin):
 # =========================
 @admin.register(TradeIssue)
 class TradeIssueAdmin(admin.ModelAdmin):
-    list_display = ('issue_id', 'investor', 'issue_type', 'status')
-    list_filter = ('status', 'issue_type')
+    list_display = ('issue_id', 'investor', 'issue_type')
+    list_filter = ('investor', 'issue_type')
     search_fields = ('issue_id', 'investor__username')
 
 
 @admin.register(TradeResolution)
 class TradeResolutionAdmin(admin.ModelAdmin):
-    list_display = ('issue', 'status', 'resolver', 'created_at')
-    list_filter = ('status',)
+    list_display = ('issue', 'resolver', 'resolved_at')
+    list_filter = ('resolver',)
     search_fields = ('issue__issue_id',)
-
-
-# =========================
-# OPTIONAL: If you still use Django auth fallback
-# =========================
-from django.contrib.auth.models import User
-
-@admin.register(User)
-class UserAdmin(admin.ModelAdmin):
-    list_display = ('username', 'email', 'is_staff')
-    search_fields = ('username', 'email')

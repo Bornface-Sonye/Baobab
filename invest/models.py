@@ -6,14 +6,14 @@ import string
 from datetime import timedelta
 from django.core.exceptions import ValidationError
 from django.contrib.auth.hashers import make_password, check_password
-from .validators import validate_kenyan_phone_number
+from .validators import validate_kenyan_id, validate_kenyan_phone_number
 from django.core.validators import MinValueValidator, MaxValueValidator
 
 # =========================
-# INVESTOR (was Student)
+# INVESTOR 
 # =========================
 class Investor(models.Model):
-    national_id_no = models.DecimalField(primary_key=True, max_digits=8, help_text="Enter National Identification Number in the format 35033637")
+    national_id_no = models.DecimalField(primary_key=True, max_digits=8, decimal_places=0, unique=True, validators=[validate_kenyan_id], help_text="Enter National Identification Number in the format 35033637")
     email_address = models.EmailField(max_length=200, help_text="Please Enter Investor Email Address")
     username = models.EmailField(unique=True, max_length=200, help_text="Enter a valid Username")
     username = models.CharField(unique=True, max_length=150)
@@ -46,7 +46,7 @@ class AssetCategory(models.Model):
 
 
 # =========================
-# ASSET (was Unit)
+# ASSET (was Unit): Add Symbol
 # =========================
 class Asset(models.Model):
     asset_code = models.CharField(primary_key=True, max_length=20)
@@ -137,6 +137,30 @@ class TradeIssue(models.Model):
         max_length=50,
         choices=[
             ('FAILED_ORDER', 'FAILED_ORDER'),
+            ('WRONG_PRICE', 'WRONG_PRICE'),
+            ('MISSING_FUNDS', 'MISSING_FUNDS'),
+            ('OTHER', 'OTHER')
+        ]
+    )
+
+    description = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.issue_id
+
+# =========================
+# INVESTMENT ORDER ISSUE (was Complaint)'amount', 'transaction_type', 'created_at')
+# =========================
+class WalletTransaction(models.Model):
+    transaction_id = models.CharField(primary_key=True, max_length=100)
+    investor = models.ForeignKey(Investor, on_delete=models.CASCADE)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+
+    transaction_type = models.CharField(
+        max_length=50,
+        choices=[
+            ('FAILED_TRANSACTION', 'FAILED_TRANSACTION'),
             ('WRONG_PRICE', 'WRONG_PRICE'),
             ('MISSING_FUNDS', 'MISSING_FUNDS'),
             ('OTHER', 'OTHER')

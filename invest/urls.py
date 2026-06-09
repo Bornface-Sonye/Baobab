@@ -37,10 +37,4 @@ urlpatterns = [
     # =========================
     path('issue/', views.IssueView.as_view(), name='issue'),
     path('issues/resolve/<int:pk>/', views.ResolveIssueView.as_view(), name='resolve-issue'),
-
-    # =========================
-    # PASSWORD RESET
-    # =========================
-    path('reset-password/', views.PasswordResetView.as_view(), name='reset-password'),
-    path('reset-password/<str:token>/', views.ResetPasswordConfirmView.as_view(), name='reset-password-confirm'),
 ]
