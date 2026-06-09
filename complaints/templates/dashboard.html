@@ -1,146 +1,116 @@
-{% extends 'base_dashboard.html' %}
-
+{% extends "base_dashboard.html" %}
 {% block content %}
-<style>
-    .sidebar-card {
-        background-color: #f8f9fa;
-        border-radius: 10px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-        padding: 15px;
-        margin-bottom: 20px;
-    }
 
-    .sidebar-header {
-        font-size: 1.1rem;
-        font-weight: bold;
-        color: #343a40;
-        margin-bottom: 10px;
-    }
+<link rel="stylesheet" href="{% static 'css/investing_dashboard.css' %}">
 
-    .stat-item {
-        font-size: 0.95rem;
-        color: #555;
-        margin-bottom: 8px;
-        font-weight: 500;
-    }
+<div class="dashboard-grid">
 
-    .card-header {
-        background-color: #1f2937;
-        color: white;
-    }
+    <!-- SUMMARY CARDS -->
+    <div class="card-grid">
 
-    .list-group-item {
-        border-radius: 6px;
-        margin-bottom: 8px;
-    }
-
-    .profit {
-        color: green;
-        font-weight: bold;
-    }
-
-    .loss {
-        color: red;
-        font-weight: bold;
-    }
-</style>
-
-<div class="container-fluid mt-4">
-    <div class="row">
-
-        <!-- SIDEBAR -->
-        <div class="col-lg-3">
-
-            <div class="sidebar-card">
-                <div class="sidebar-header">
-                    Investor Dashboard
-                </div>
-                <p class="stat-item">Account: {{ investor.username }}</p>
-            </div>
-
-            <div class="sidebar-card">
-                <div class="sidebar-header">Portfolio Summary</div>
-
-                <p class="stat-item">Cash Balance: {{ investor.cash_balance }}</p>
-                <p class="stat-item">Total Portfolio Value: {{ total_value }}</p>
-                <p class="stat-item">Total Profit/Loss: 
-                    <span class="{% if total_profit >= 0 %}profit{% else %}loss{% endif %}">
-                        {{ total_profit }}
-                    </span>
-                </p>
-            </div>
-
-            <div class="sidebar-card">
-                <div class="sidebar-header">Quick Stats</div>
-
-                <p class="stat-item">Assets Owned: {{ holdings|length }}</p>
-                <p class="stat-item">Active Trades: {{ active_trades|default:0 }}</p>
-            </div>
-
+        <div class="card">
+            <h3>Cash Balance</h3>
+            <p>${{ cash_balance }}</p>
         </div>
 
-        <!-- MAIN CONTENT -->
-        <div class="col-lg-9">
-
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">Your Portfolio Holdings</h3>
-                </div>
-
-                <div class="card-body">
-
-                    <div class="row">
-
-                        <!-- HOLDINGS -->
-                        <div class="col-md-6">
-                            <h5>Assets</h5>
-                            <ul class="list-group">
-
-                                {% for h in holdings %}
-                                <li class="list-group-item">
-                                    {{ h.asset.name }}
-                                    <br>
-                                    <small>
-                                        Qty: {{ h.quantity }} |
-                                        Avg Price: {{ h.average_buy_price }} |
-                                        Current: {{ h.asset.current_price }}
-                                    </small>
-                                </li>
-                                {% empty %}
-                                <li class="list-group-item">No investments yet</li>
-                                {% endfor %}
-
-                            </ul>
-                        </div>
-
-                        <!-- PERFORMANCE -->
-                        <div class="col-md-6">
-                            <h5>Performance Overview</h5>
-                            <ul class="list-group">
-
-                                {% for h in holdings %}
-                                <li class="list-group-item">
-                                    {{ h.asset.name }}:
-                                    <span class="{% if h.profit_loss >= 0 %}profit{% else %}loss{% endif %}">
-                                        {{ h.profit_loss }}
-                                    </span>
-                                </li>
-                                {% endfor %}
-
-                            </ul>
-                        </div>
-
-                    </div>
-
-                </div>
-
-                <div class="card-footer text-center">
-                    Investing Platform • Portfolio Management System
-                </div>
-            </div>
-
+        <div class="card">
+            <h3>Portfolio Value</h3>
+            <p>${{ portfolio_value }}</p>
         </div>
+
+        <div class="card">
+            <h3>Total Profit</h3>
+            <p class="{% if profit >= 0 %}profit{% else %}loss{% endif %}">
+                ${{ profit }}
+            </p>
+        </div>
+
+        <div class="card">
+            <h3>Active Assets</h3>
+            <p>{{ holdings|length }}</p>
+        </div>
+
     </div>
+
+    <!-- CHARTS SECTION -->
+    <div class="charts-grid">
+
+        <!-- Portfolio Growth Line Chart -->
+        <div class="chart-box">
+            <h3>Portfolio Growth</h3>
+            <canvas id="portfolioChart"></canvas>
+        </div>
+
+        <!-- Asset Distribution Pie -->
+        <div class="chart-box">
+            <h3>Asset Allocation</h3>
+            <canvas id="assetChart"></canvas>
+        </div>
+
+    </div>
+
+    <!-- HOLDINGS TABLE -->
+    <div class="table-section">
+        <h3>Your Assets</h3>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Asset</th>
+                    <th>Qty</th>
+                    <th>Buy Price</th>
+                    <th>Current Price</th>
+                    <th>P/L</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for h in holdings %}
+                <tr>
+                    <td>{{ h.asset.name }}</td>
+                    <td>{{ h.quantity }}</td>
+                    <td>{{ h.average_buy_price }}</td>
+                    <td>{{ h.asset.current_price }}</td>
+                    <td class="{% if h.profit_loss >= 0 %}profit{% else %}loss{% endif %}">
+                        {{ h.profit_loss }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
 </div>
+
+<!-- CHART JS -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    // Portfolio Growth Chart
+    new Chart(document.getElementById('portfolioChart'), {
+        type: 'line',
+        data: {
+            labels: {{ chart_labels|safe }},
+            datasets: [{
+                label: 'Portfolio Value',
+                data: {{ chart_values|safe }},
+                borderColor: '#00c853',
+                fill: true
+            }]
+        }
+    });
+
+    // Asset Allocation Chart
+    new Chart(document.getElementById('assetChart'), {
+        type: 'pie',
+        data: {
+            labels: {{ asset_labels|safe }},
+            datasets: [{
+                data: {{ asset_values|safe }},
+                backgroundColor: ['#2196f3', '#ff9800', '#4caf50', '#e91e63']
+            }]
+        }
+    });
+</script>
 
 {% endblock %}
