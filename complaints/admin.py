@@ -1,90 +1,88 @@
-# complaints/admin.py
 from django.contrib import admin
 from .models import (
-    School, Department, Course, Student, Lecturer, Unit, NominalRoll,
-    Response, LecturerUnit, Result, Complaint, System_User, AcademicYear, PasswordResetToken
+    Investor, Asset, AssetCategory,
+    PortfolioHolding, Trade,
+    WalletTransaction, TradeIssue, TradeResolution
 )
 
-@admin.register(School)
-class SchoolAdmin(admin.ModelAdmin):
-    list_display = ('school_code', 'school_name')
-    search_fields = ('school_code', 'school_name')
-
-@admin.register(Department)
-class DepartmentAdmin(admin.ModelAdmin):
-    list_display = ('dep_code', 'dep_name', 'school_code')
-    list_filter = ('school_code',)
-    search_fields = ('dep_name', 'dep_code')
-
-@admin.register(Course)
-class CourseAdmin(admin.ModelAdmin):
-    list_display = ('course_code', 'course_name', 'dep_code')
-    list_filter = ('dep_code',)
-    search_fields = ('course_name', 'course_code')
-
-@admin.register(Student)
-class StudentAdmin(admin.ModelAdmin):
-    list_display = ('reg_no', 'first_name', 'last_name', 'email_address', 'phone_number', 'course_code')
-    list_filter = ('course_code',)
-    search_fields = ('reg_no', 'first_name', 'last_name', 'email_address')
-    
-
-@admin.register(Lecturer)
-class LecturerAdmin(admin.ModelAdmin):
-    list_display = ('lec_no', 'first_name', 'last_name', 'email_address', 'phone_number', 'dep_code')
-    list_filter = ('dep_code',)
-    search_fields = ('lec_no', 'first_name', 'role', 'last_name', 'email_address')
-
-@admin.register(Unit)
-class UnitAdmin(admin.ModelAdmin):
-    list_display = ('unit_code', 'unit_name', 'dep_code')
-    list_filter = ('dep_code',)
-    search_fields = ('unit_code', 'unit_name')
-
-@admin.register(AcademicYear)
-class AcademicYearAdmin(admin.ModelAdmin):
-    list_display = ('year_id', 'academic_year')
-    search_fields = ('academic_year',) 
-    
-@admin.register(LecturerUnit)
-class LecturerUnitAdmin(admin.ModelAdmin):
-    list_display = ('unit_code', 'lec_no', 'academic_year', 'course_code')
-    list_filter = ('unit_code', 'course_code')
-    search_fields = ('unit_code', 'lec_no', 'academic_year', 'course_code')
-    
-@admin.register(NominalRoll)
-class NominalRollAdmin(admin.ModelAdmin):
-    list_display = ('unit_code', 'reg_no', 'academic_year')
-    list_filter = ('unit_code', 'reg_no', 'academic_year')
-    search_fields = ('unit_code', 'reg_no', 'academic_year')
-    
-@admin.register(Result)
-class ResultAdmin(admin.ModelAdmin):
-    list_display = ('unit_code', 'reg_no', 'academic_year', 'cat', 'exam')
-    list_filter = ('unit_code', 'reg_no', 'academic_year')
-    search_fields = ('unit_code', 'reg_no', 'academic_year', 'cat', 'exam')
+# =========================
+# INVESTOR ADMIN
+# =========================
+@admin.register(Investor)
+class InvestorAdmin(admin.ModelAdmin):
+    list_display = ('username', 'email', 'cash_balance')
+    search_fields = ('username', 'email')
 
 
-@admin.register(Complaint)
-class ComplaintAdmin(admin.ModelAdmin):
-    list_display = ('complaint_code', 'unit_code', 'reg_no', 'missing_mark', 'exam_date')
-    list_filter = ('unit_code', 'reg_no', 'academic_year')
-    search_fields = ('unit_code', 'reg_no', 'academic_year')
+# =========================
+# ASSET ADMIN (STOCKS / CRYPTO / FUNDS)
+# =========================
+@admin.register(Asset)
+class AssetAdmin(admin.ModelAdmin):
+    list_display = ('name', 'symbol', 'current_price', 'category')
+    list_filter = ('category',)
+    search_fields = ('name', 'symbol')
 
-@admin.register(Response)
-class ResponseAdmin(admin.ModelAdmin):
-    list_display = ('response_code', 'reg_no', 'unit_code', 'academic_year')
-    list_filter = ('response_code', 'reg_no', 'unit_code', 'academic_year')
-    search_fields = ('response_code', 'reg_no', 'unit_code', 'academic_year')
 
-@admin.register(System_User)
-class SystemUserAdmin(admin.ModelAdmin):
-    list_display = ('username',)
-    list_filter = ('username',)
-    search_fields = ('username',)
+@admin.register(AssetCategory)
+class AssetCategoryAdmin(admin.ModelAdmin):
+    list_display = ('name',)
+    search_fields = ('name',)
 
-@admin.register(PasswordResetToken)
-class PasswordResetTokenAdmin(admin.ModelAdmin):
-    list_display = ('username', 'token', 'created_at')
-    list_filter = ('username',)
-    search_fields = ('username', 'token', 'created_at')
+
+# =========================
+# PORTFOLIO HOLDINGS
+# =========================
+@admin.register(PortfolioHolding)
+class PortfolioHoldingAdmin(admin.ModelAdmin):
+    list_display = ('investor', 'asset', 'quantity', 'average_buy_price')
+    list_filter = ('asset',)
+    search_fields = ('investor__username', 'asset__name')
+
+
+# =========================
+# TRADE SYSTEM (BUY / SELL)
+# =========================
+@admin.register(Trade)
+class TradeAdmin(admin.ModelAdmin):
+    list_display = ('investor', 'asset', 'trade_type', 'quantity', 'price', 'timestamp')
+    list_filter = ('trade_type', 'asset')
+    search_fields = ('investor__username', 'asset__name')
+
+
+# =========================
+# WALLET TRANSACTIONS
+# =========================
+@admin.register(WalletTransaction)
+class WalletTransactionAdmin(admin.ModelAdmin):
+    list_display = ('investor', 'amount', 'transaction_type', 'created_at')
+    list_filter = ('transaction_type',)
+    search_fields = ('investor__username',)
+
+
+# =========================
+# SUPPORT / ISSUES
+# =========================
+@admin.register(TradeIssue)
+class TradeIssueAdmin(admin.ModelAdmin):
+    list_display = ('issue_id', 'investor', 'issue_type', 'status')
+    list_filter = ('status', 'issue_type')
+    search_fields = ('issue_id', 'investor__username')
+
+
+@admin.register(TradeResolution)
+class TradeResolutionAdmin(admin.ModelAdmin):
+    list_display = ('issue', 'status', 'resolver', 'created_at')
+    list_filter = ('status',)
+    search_fields = ('issue__issue_id',)
+
+
+# =========================
+# OPTIONAL: If you still use Django auth fallback
+# =========================
+from django.contrib.auth.models import User
+
+@admin.register(User)
+class UserAdmin(admin.ModelAdmin):
+    list_display = ('username', 'email', 'is_staff')
+    search_fields = ('username', 'email')

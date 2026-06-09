@@ -1,29 +1,46 @@
 """
-Django settings for tracker project.
+Django settings for investing platform (tracker -> investing app upgrade)
 """
 
-import os
 from pathlib import Path
+import os
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Quick-start development settings - unsuitable for production
-SECRET_KEY = 'django-insecure-ac^0#la%7=9%2@vq)i@kk1yz%6zprm8pw(#+4zo65(oa76yivw'
-DEBUG = True
-ALLOWED_HOSTS = []  # Update this with your production domain/IP
 
-# Application definition
+# =========================
+# SECURITY SETTINGS
+# =========================
+SECRET_KEY = os.environ.get(
+    "SECRET_KEY",
+    "django-insecure-change-this-in-production"
+)
+
+DEBUG = True  # Set False in production
+
+ALLOWED_HOSTS = ["*"]  # Replace with your domain in production
+
+
+# =========================
+# APPLICATIONS
+# =========================
 INSTALLED_APPS = [
+    # Django core
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'django.contrib.staticfiles',    
-    'complaints',
+    'django.contrib.staticfiles',
+
+    # INVESTING APP MODULE
+    'investing',  # renamed from complaints
 ]
 
+
+# =========================
+# MIDDLEWARE
+# =========================
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -34,12 +51,17 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+
 ROOT_URLCONF = 'tracker.urls'
 
+
+# =========================
+# TEMPLATES
+# =========================
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],  # Add custom template directories if needed
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -52,9 +74,13 @@ TEMPLATES = [
     },
 ]
 
+
 WSGI_APPLICATION = 'tracker.wsgi.application'
 
-# Database Configuration
+
+# =========================
+# DATABASE
+# =========================
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -62,7 +88,10 @@ DATABASES = {
     }
 }
 
-# Password validation
+
+# =========================
+# PASSWORD VALIDATION
+# =========================
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -70,34 +99,47 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-# Specify custom user model
-#AUTH_USER_MODEL = 'users.CustomUser'  # Uncomment this line to use your custom user model
 
-# Email settings
+# =========================
+# AUTH MODEL (OPTIONAL UPGRADE PATH)
+# =========================
+# AUTH_USER_MODEL = 'investing.Investor'
+
+
+# =========================
+# EMAIL (FOR OTP / PASSWORD RESET)
+# =========================
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'pesamashinaniservices@gmail.com'
-EMAIL_HOST_PASSWORD = 'gjch yrql wced cjxm'  # Use the App Password generated
 
-# Internationalization
+EMAIL_HOST_USER = os.environ.get("EMAIL_USER", "your-email@gmail.com")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_PASS", "your-app-password")
+
+
+# =========================
+# INTERNATIONALIZATION
+# =========================
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Africa/Nairobi'
 USE_I18N = True
 USE_TZ = True
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.0/howto/static-files/
+
+# =========================
+# STATIC FILES
+# =========================
 STATIC_URL = '/static/'
 
-# App-level static files
-APP_STATIC_ROOT = os.path.join(BASE_DIR, 'complaints/static/')
-STATICFILES_DIRS = [APP_STATIC_ROOT]
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static')
+]
 
-# Absolute filesystem path to the directory that will hold collected static files.
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-# Default primary key field type
-# https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
+
+# =========================
+# DEFAULT PK
+# =========================
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

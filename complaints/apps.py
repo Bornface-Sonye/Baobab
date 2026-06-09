@@ -1,6 +1,7 @@
 from django.apps import AppConfig
 
 
-class ComplaintsConfig(AppConfig):
+class InvestingConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'complaints'
+    name = 'investing'
+    verbose_name = 'Investment Platform'

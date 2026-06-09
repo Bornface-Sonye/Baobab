@@ -1,24 +1,74 @@
 import re
 from django.core.exceptions import ValidationError
 
-def validate_reg_no(value):
-    # Pattern explanation:
-    # - Three letters (uppercase or lowercase) at the start
-    # - A forward slash ('/')
-    # - One letter (uppercase or lowercase)
-    # - Another forward slash ('/')
-    # - Two digits, followed by a hyphen ('-')
-    # - Five digits, followed by a forward slash ('/')
-    # - Four digits at the end (for the year)
-    if not re.match(r'^[A-Za-z]{3}/[A-Za-z]/\d{2}-\d{5}/\d{4}$', str(value)):
-        raise ValidationError(f'{value} is not a valid registration number. Expected format: ABC/D/01-00123/2023')
 
+# =========================
+# INVESTOR ID / ACCOUNT CODE VALIDATION
+# =========================
+def validate_investor_id(value):
+    """
+    Format: INV/XX-12345/2026
+    Used for internal brokerage identification or account reference.
+    """
+    pattern = r'^INV/[A-Za-z]{2}-\d{5}/\d{4}$'
 
-
-
-def validate_kenyan_phone_number(value):
-    value_str = str(value)
-    if not re.match(r'^(?:\+254|0)?7\d{8}$', value_str):
+    if not re.match(pattern, str(value)):
         raise ValidationError(
-            f'{value} is not a valid Kenyan phone number. It must be in the format 0798073204 or +254798073404.'
+            f'{value} is not valid. Expected format: INV/AB-12345/2026'
         )
+
+
+# =========================
+# WALLET / TRANSACTION REFERENCE VALIDATION
+# =========================
+def validate_transaction_ref(value):
+    """
+    Format: TXN-ABC123456
+    Used for deposits, withdrawals, and trade references.
+    """
+    pattern = r'^TXN-[A-Z0-9]{6,10}$'
+
+    if not re.match(pattern, str(value)):
+        raise ValidationError(
+            f'{value} is not a valid transaction reference (e.g. TXN-AB12CD34)'
+        )
+
+
+# =========================
+# KENYAN PHONE NUMBER VALIDATION (M-PESA READY)
+# =========================
+def validate_kenyan_phone_number(value):
+    """
+    Accepts:
+    - 0798073204
+    - +254798073404
+    - 254798073404
+    """
+    value_str = str(value)
+
+    pattern = r'^(?:\+254|254|0)?7\d{8}$'
+
+    if not re.match(pattern, value_str):
+        raise ValidationError(
+            f'{value} is not a valid Kenyan phone number. '
+            f'Use 0798073204 or +254798073404 format.'
+        )
+
+
+# =========================
+# INVESTMENT AMOUNT VALIDATION
+# =========================
+def validate_investment_amount(value):
+    """
+    Ensures users cannot trade with invalid amounts.
+    """
+    try:
+        value = float(value)
+    except:
+        raise ValidationError("Amount must be numeric")
+
+    if value <= 0:
+        raise ValidationError("Amount must be greater than zero")
+
+    if value < 10:
+        raise ValidationError("Minimum investment amount is 10")
