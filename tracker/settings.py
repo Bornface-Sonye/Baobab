@@ -52,7 +52,7 @@ MIDDLEWARE = [
 ]
 
 
-ROOT_URLCONF = 'tracker.urls'
+ROOT_URLCONF = 'investing.urls'
 
 
 # =========================
