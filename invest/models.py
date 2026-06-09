@@ -1,21 +1,25 @@
 from django.db import models
+from datetime import date
 from django.utils import timezone
-from django.core.validators import MinValueValidator
+import random
+import string
+from datetime import timedelta
 from django.core.exceptions import ValidationError
 from django.contrib.auth.hashers import make_password, check_password
-from datetime import timedelta
-
+from .validators import validate_kenyan_phone_number
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 # =========================
 # INVESTOR (was Student)
 # =========================
 class Investor(models.Model):
-    investor_id = models.CharField(primary_key=True, max_length=50)
+    national_id_no = models.DecimalField(primary_key=True, max_digits=15, help_text="Enter National Identification Number in the format 35033637")
+    email_address = models.EmailField(max_length=200, help_text="Please Enter Investor Email Address")
+    username = models.EmailField(unique=True, max_length=200, help_text="Enter a valid Username")
     username = models.CharField(unique=True, max_length=150)
     first_name = models.CharField(max_length=150)
     last_name = models.CharField(max_length=150)
-    email = models.EmailField(unique=True)
-    phone_number = models.CharField(max_length=15)
+    phone_number = models.CharField(max_length=13, validators=[validate_kenyan_phone_number], help_text="Enter phone number in the format 0798073204 or +254798073404")
 
     cash_balance = models.DecimalField(
         max_digits=15,
@@ -171,11 +175,11 @@ class TradeResolution(models.Model):
 
 
 # =========================
-# USER AUTH (was System_User)
+# USER AUTH (System_User)
 # =========================
-class SystemUser(models.Model):
-    username = models.CharField(primary_key=True, max_length=50)
-    password_hash = models.CharField(max_length=128)
+class System_User(models.Model):
+    username = models.CharField(primary_key=True, unique=True, max_length=50, help_text="Enter a valid Username")
+    password_hash = models.CharField(max_length=128, help_text="Enter a valid password")  # Store hashed password
 
     def set_password(self, raw_password):
         self.password_hash = make_password(raw_password)
@@ -183,12 +187,20 @@ class SystemUser(models.Model):
     def check_password(self, raw_password):
         return check_password(raw_password, self.password_hash)
 
+    def clean(self):
+        # Custom validation for password field
+        if len(self.password_hash) < 8:
+            raise ValidationError("Password must be at least 8 characters long.")
+
+    def __str__(self):
+        return self.username   
+
 
 # =========================
 # PASSWORD RESET
 # =========================
 class PasswordResetToken(models.Model):
-    user = models.ForeignKey(SystemUser, on_delete=models.CASCADE)
+    user = models.ForeignKey(System_User, on_delete=models.CASCADE)
     token = models.CharField(max_length=32)
     created_at = models.DateTimeField(auto_now_add=True)
 

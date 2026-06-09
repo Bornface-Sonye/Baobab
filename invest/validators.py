@@ -3,22 +3,6 @@ from django.core.exceptions import ValidationError
 
 
 # =========================
-# INVESTOR ID / ACCOUNT CODE VALIDATION
-# =========================
-def validate_investor_id(value):
-    """
-    Format: INV/XX-12345/2026
-    Used for internal brokerage identification or account reference.
-    """
-    pattern = r'^INV/[A-Za-z]{2}-\d{5}/\d{4}$'
-
-    if not re.match(pattern, str(value)):
-        raise ValidationError(
-            f'{value} is not valid. Expected format: INV/AB-12345/2026'
-        )
-
-
-# =========================
 # WALLET / TRANSACTION REFERENCE VALIDATION
 # =========================
 def validate_transaction_ref(value):

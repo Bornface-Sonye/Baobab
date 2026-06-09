@@ -7,16 +7,17 @@ from django.utils import timezone
 from django.urls import reverse_lazy
 from django.core.exceptions import ValidationError
 import random, string
+import re
 
 from .models import (
     Investor, Asset, AssetCategory,
     PortfolioHolding, Trade,
-    TradeIssue, TradeResolution
+    TradeIssue, TradeResolution, System_User
 )
 
 from .forms import (
     LoginForm, TradeForm, DepositForm, WithdrawalForm,
-    IssueForm
+    IssueForm, SignUpForm
 )
 
 # =========================
@@ -44,15 +45,55 @@ class LoginView(View):
             username = form.cleaned_data["username"]
             password = form.cleaned_data["password"]
 
-            investor = Investor.objects.filter(username=username).first()
+            user = System_User.objects.filter(username=username).first()
 
-            if investor:
+            if user:
                 request.session["username"] = username
                 return redirect("dashboard")
 
             messages.error(request, "Invalid login")
         return render(request, "login.html", {"form": form})
 
+
+class SignUpView(View):
+    template_name = 'signup.html'
+
+    def get(self, request):
+        form = SignUpForm()
+        return render(request, self.template_name, {'form': form})
+
+    def post(self, request):
+        form = SignUpForm(request.POST)
+
+        if form.is_valid():
+            username = form.cleaned_data['username']
+            password_hash = form.cleaned_data['password_hash']
+
+            # Check if username already exists in System_User model
+            if System_User.objects.filter(username=username).exists():
+                form.add_error('username', "This username has already been used in the system!")
+                return render(request, self.template_name, {'form': form})
+            if self.is_lecturer_username(username):
+                # Check if the investor exists in the Lecturer model
+                if not Investor.objects.filter(username=username).exists():
+                    form.add_error('username', "This Investor email does not exist.")
+                    return render(request, self.template_name, {'form': form})
+            else:
+                form.add_error('username', "Invalid username format. Please enter a valid Investor Email.")
+                return render(request, self.template_name, {'form': form})
+
+            # Create the account if all checks pass
+            new_account = form.save(commit=False)
+            new_account.set_password(password_hash)
+            new_account.save()
+            return redirect('login')
+        else:
+            # If the form is not valid, render the template with the form and errors
+            return render(request, self.template_name, {'form': form})
+
+    def is_investor_username(self, username):
+        # Check if the username is in the investor email format
+        return bool(re.match(r'^[a-zA-Z0-9]{1,15}@investor\.co\.ke$', username))
 
 class LogoutView(View):
     def get(self, request):
