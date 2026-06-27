@@ -223,10 +223,15 @@ class System_User(models.Model):
 # =========================
 # PASSWORD RESET
 # =========================
+    
 class PasswordResetToken(models.Model):
-    user = models.ForeignKey(System_User, on_delete=models.CASCADE)
+    username = models.ForeignKey(System_User, on_delete=models.CASCADE)
     token = models.CharField(max_length=32)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def __str__(self):
+        return f"Token for {self.username}"
+
     def is_expired(self):
-        return timezone.now() > self.created_at + timedelta(minutes=10)
+        expiration_time = self.created_at + timedelta(minutes=5)
+        return timezone.now() > expiration_time

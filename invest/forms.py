@@ -66,6 +66,43 @@ class LoginForm(forms.Form):
         return cleaned_data
 
 
+class PasswordResetForm(forms.Form):
+    username = forms.EmailField(
+        label='Username',
+        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Enter your email address(Username)'})
+    )
+
+    def clean_username(self):
+        username = self.cleaned_data.get('username')
+        if not System_User.objects.filter(username=username).exists():
+            raise forms.ValidationError("This Username is not associated with any account.")
+        return username
+
+class ResetForm(forms.Form):  # Use forms.Form instead of ModelForm
+    password = forms.CharField(
+        widget=forms.PasswordInput(attrs={'placeholder': 'Password', 'class': 'form-control'}),
+        label="Password"
+    )
+    confirm_password = forms.CharField(
+        widget=forms.PasswordInput(attrs={'placeholder': 'Confirm Password', 'class': 'form-control'}),
+        label="Confirm Password"
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password = cleaned_data.get("password")
+        confirm_password = cleaned_data.get("confirm_password")
+
+        if password != confirm_password:
+            raise forms.ValidationError("Password and confirm password do not match.")
+
+    def save(self, user, commit=True):
+        # Use user object and set password
+        user.set_password(self.cleaned_data["password"])  # Hash password and set it
+        if commit:
+            user.save()
+        return user
+
 
 # =========================
 # TRADE FORM (BUY / SELL)

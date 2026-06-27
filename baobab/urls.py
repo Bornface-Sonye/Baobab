@@ -2,8 +2,6 @@ from django.contrib import admin
 from django.urls import path, include
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-
-    # Invest application routes
-    path('', include('invest.urls')),
+    path("", include("invest.urls")),
+    path("admin/", admin.site.urls),
 ]

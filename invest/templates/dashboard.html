@@ -1,116 +1,103 @@
-{% extends "base_dashboard.html" %}
+{% extends 'base_dashboard.html' %}
+
 {% block content %}
+<style>
+    /* Sidebar styling */
+    .sidebar-card {
+        background-color: #f8f9fa;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        padding: 15px;
+        margin-bottom: 20px;
+    }
 
-<link rel="stylesheet" href="{% static 'css/investing_dashboard.css' %}">
+    .sidebar-header {
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: #343a40;
+        margin-bottom: 10px;
+    }
 
-<div class="dashboard-grid">
+    .stat-item {
+        font-size: 1rem;
+        color: #555;
+        margin-bottom: 8px;
+        font-weight: 500;
+    }
 
-    <!-- SUMMARY CARDS -->
-    <div class="card-grid">
+    /* Main content styling */
+    .card-header {
+        background-color: #343a40;
+        color: white;
+    }
 
-        <div class="card">
-            <h3>Cash Balance</h3>
-            <p>${{ cash_balance }}</p>
+    .card-footer {
+        background-color: #f8f9fa;
+        font-size: 0.9rem;
+    }
+
+    .list-group-item {
+        border-radius: 5px;
+        margin-bottom: 10px;
+    }
+</style>
+
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-lg-3">
+            <!-- Sidebar Card -->
+            <div class="sidebar-card">
+                <div class="sidebar-header">
+                    <p class="stat-item">Department: {{ department_name }}</p>
+                </div>
+            </div>
+            <div class="sidebar-card">
+                <div class="sidebar-header">
+                    Welcome  Back !!!
+                </div>
+                <div class="sidebar-header">
+                    Welcome, {{ last_name }}
+                </div>
+                <p class="stat-item">Total Students: {{ total_students }}</p>
+                <p class="stat-item">Total Lecturers: {{ total_lecturers_in_department }}</p>
+                <p class="stat-item">Total Units: {{ total_units_for_lecturer }}</p>
+                <p class="stat-item">Total Complaints: {{ related_complaints_count }}</p>
+                <p class="stat-item">Total Responses: {{ related_responses_count }}</p>
+            </div>
         </div>
 
-        <div class="card">
-            <h3>Portfolio Value</h3>
-            <p>${{ portfolio_value }}</p>
-        </div>
+        <div class="col-lg-9">
+            <!-- Main content area -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Department Chairperson</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Units</h5>
+                            <ul class="list-group">
+                                {% for unit in units %}
+                                <li class="list-group-item">{{ unit.unit_name }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
 
-        <div class="card">
-            <h3>Total Profit</h3>
-            <p class="{% if profit >= 0 %}profit{% else %}loss{% endif %}">
-                ${{ profit }}
-            </p>
+                        <div class="col-md-6">
+                            <h5>Courses</h5>
+                            <ul class="list-group">
+                                {% for course in courses %}
+                                <li class="list-group-item">{{ course.course_name }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer text-center">
+                    Powered by Azdak's Software Solution
+                </div>
+            </div>
         </div>
-
-        <div class="card">
-            <h3>Active Assets</h3>
-            <p>{{ holdings|length }}</p>
-        </div>
-
     </div>
-
-    <!-- CHARTS SECTION -->
-    <div class="charts-grid">
-
-        <!-- Portfolio Growth Line Chart -->
-        <div class="chart-box">
-            <h3>Portfolio Growth</h3>
-            <canvas id="portfolioChart"></canvas>
-        </div>
-
-        <!-- Asset Distribution Pie -->
-        <div class="chart-box">
-            <h3>Asset Allocation</h3>
-            <canvas id="assetChart"></canvas>
-        </div>
-
-    </div>
-
-    <!-- HOLDINGS TABLE -->
-    <div class="table-section">
-        <h3>Your Assets</h3>
-
-        <table>
-            <thead>
-                <tr>
-                    <th>Asset</th>
-                    <th>Qty</th>
-                    <th>Buy Price</th>
-                    <th>Current Price</th>
-                    <th>P/L</th>
-                </tr>
-            </thead>
-
-            <tbody>
-                {% for h in holdings %}
-                <tr>
-                    <td>{{ h.asset.name }}</td>
-                    <td>{{ h.quantity }}</td>
-                    <td>{{ h.average_buy_price }}</td>
-                    <td>{{ h.asset.current_price }}</td>
-                    <td class="{% if h.profit_loss >= 0 %}profit{% else %}loss{% endif %}">
-                        {{ h.profit_loss }}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-
 </div>
-
-<!-- CHART JS -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<script>
-    // Portfolio Growth Chart
-    new Chart(document.getElementById('portfolioChart'), {
-        type: 'line',
-        data: {
-            labels: {{ chart_labels|safe }},
-            datasets: [{
-                label: 'Portfolio Value',
-                data: {{ chart_values|safe }},
-                borderColor: '#00c853',
-                fill: true
-            }]
-        }
-    });
-
-    // Asset Allocation Chart
-    new Chart(document.getElementById('assetChart'), {
-        type: 'pie',
-        data: {
-            labels: {{ asset_labels|safe }},
-            datasets: [{
-                data: {{ asset_values|safe }},
-                backgroundColor: ['#2196f3', '#ff9800', '#4caf50', '#e91e63']
-            }]
-        }
-    });
-</script>
-
 {% endblock %}
