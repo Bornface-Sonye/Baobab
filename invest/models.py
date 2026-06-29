@@ -33,11 +33,76 @@ class Investor(models.Model):
     def __str__(self):
         return self.username
 
+# ==============================
+# MONEY DISBURSED BY INVESTORS
+# ==============================
+class Disbursed(models.Model):
+    disbursed_id = models.AutoField(primary_key=True, unique=True)
+    disbursement_no = models.CharField(unique=True, max_length=30, help_text="Enter the Disbursement Number", blank=True)
+    investor = models.ForeignKey(Investor, on_delete=models.CASCADE)
+    disbursed_amount = models.DecimalField(max_digits=15, decimal_places=2, help_text="Enter Amount Disbursed")
+    interest_rate = models.DecimalField(max_digits=15, decimal_places=2, help_text="Enter Interest Rate")
+    disbursement_date = models.DateField(help_text="Enter Date of Disbursement")
+    loan_duration = models.IntegerField(help_text="Loan Duration in Hrs/Days/Weeks/Months/Years")
+
+    def __str__(self):
+        return f"Disbursement - {self.transaction_no}"
+
+
+# ==============================
+# MONEY BORROWED BY INVESTORS
+# ==============================    
+class Borrowed(models.Model):
+    borrowed_id = models.AutoField(primary_key=True, unique=True)
+    transaction_no = models.CharField(unique=True, max_length=30, help_text="Enter the Transaction Number", blank=True)
+    investor = models.ForeignKey(Investor, on_delete=models.CASCADE)
+    borrowed_amount = models.DecimalField(max_digits=15, decimal_places=2, help_text="Enter Amount to Disburse")
+    interest_rate = models.DecimalField(max_digits=15, decimal_places=2, help_text="Enter Interest Rate")
+    date_borrowed = models.DateField(help_text="Enter Date of Disbursement")
+    loan_duration = models.IntegerField(help_text="Loan Duration in Hrs/Days/Weeks/Months/Years")
+
+    def __str__(self):
+        return f"Borrowing - {self.transaction_no}"
+
+
+# ==============================
+# MONEY PAID BY INVESTORS
+# ==============================     
+class Payment(models.Model):
+    payment_id = models.AutoField(primary_key=True, unique=True)
+    payment_no = models.CharField(max_length=30, help_text="Enter the Payment Number", blank=True)
+    transaction_no = models.CharField(max_length=30, help_text="Enter the Transaction Number")
+    payment_amount = models.DecimalField(max_digits=15, decimal_places=2, help_text="Enter Amount to Pay")
+    payment_date = models.DateField(help_text="Enter Date of Disbursement")
+
+    def __str__(self):
+        return f"Payment - {self.payment_no}"
+    
+# ==============================
+# LOAN BY INVESTOR
+# ==============================    
+class Loan(models.Model):
+    loan_id = models.AutoField(primary_key=True, unique=True)
+    disbursement_no = models.ForeignKey(Disbursed, on_delete=models.CASCADE)
+    transaction_no = models.ForeignKey(Borrowed, on_delete=models.CASCADE)
+    payment_no = models.ForeignKey(Payment, on_delete=models.CASCADE)
+    principal = models.DecimalField(max_digits=15, decimal_places=2, help_text="Enter Amount to Pay")
+    loan_interest = models.DecimalField(max_digits=15, decimal_places=2, help_text="Interest Rate")
+    principal_interest = models.DecimalField(max_digits=15, decimal_places=2, help_text="Total Amount")
+    amount_paid =  models.DecimalField(max_digits=15, decimal_places=2, help_text="Total Paid")
+    balance =  models.DecimalField(max_digits=15, decimal_places=2, help_text="Balance")
+    loan_date = models.DateField(
+    help_text="Enter Date of last Payment",
+    default='2024-01-01'  # Ensure this is a string
+)
+
+    def __str__(self):
+        return f"Loan - {self.transaction_no}"
 
 # =========================
-# ASSET CATEGORY (was Course)
+# STOCK CATEGORY
 # =========================
-class AssetCategory(models.Model):
+class StockCategory(models.Model):
     code = models.CharField(primary_key=True, max_length=20)
     name = models.CharField(max_length=200)
 
@@ -46,12 +111,12 @@ class AssetCategory(models.Model):
 
 
 # =========================
-# ASSET (was Unit): Add Symbol
+# STOCK
 # =========================
-class Asset(models.Model):
-    asset_code = models.CharField(primary_key=True, max_length=20)
+class Stock(models.Model):
+    stock_code = models.CharField(primary_key=True, max_length=20)
     name = models.CharField(max_length=200)
-    category = models.ForeignKey(AssetCategory, on_delete=models.CASCADE)
+    category = models.ForeignKey(StockCategory, on_delete=models.CASCADE)
 
     current_price = models.DecimalField(
         max_digits=12,
@@ -64,11 +129,11 @@ class Asset(models.Model):
 
 
 # =========================
-# PORTFOLIO HOLDING (was Result)
+# PORTFOLIO HOLDING
 # =========================
 class PortfolioHolding(models.Model):
     investor = models.ForeignKey(Investor, on_delete=models.CASCADE)
-    asset = models.ForeignKey(Asset, on_delete=models.CASCADE)
+    stock = models.ForeignKey(Stock, on_delete=models.CASCADE)
 
     quantity = models.DecimalField(
         max_digits=15,
@@ -109,7 +174,7 @@ class Trade(models.Model):
     ]
 
     investor = models.ForeignKey(Investor, on_delete=models.CASCADE)
-    asset = models.ForeignKey(Asset, on_delete=models.CASCADE)
+    stock = models.ForeignKey(Stock, on_delete=models.CASCADE)
 
     trade_type = models.CharField(max_length=10, choices=TRADE_TYPES)
     quantity = models.DecimalField(max_digits=15, decimal_places=4)
@@ -122,11 +187,11 @@ class Trade(models.Model):
             raise ValidationError("Quantity must be greater than zero.")
 
     def __str__(self):
-        return f"{self.trade_type} {self.asset} by {self.investor}"
+        return f"{self.trade_type} {self.stock} by {self.investor}"
 
 
 # =========================
-# INVESTMENT ORDER ISSUE (was Complaint)
+# TRADE ISSUE
 # =========================
 class TradeIssue(models.Model):
     issue_id = models.CharField(primary_key=True, max_length=100)
@@ -150,7 +215,7 @@ class TradeIssue(models.Model):
         return self.issue_id
 
 # =========================
-# INVESTMENT ORDER ISSUE (was Complaint)'amount', 'transaction_type', 'created_at')
+# INVESTMENT ORDER ISSUE
 # =========================
 class WalletTransaction(models.Model):
     transaction_id = models.CharField(primary_key=True, max_length=100)
@@ -175,7 +240,7 @@ class WalletTransaction(models.Model):
 
 
 # =========================
-# RESOLUTION (was Response)
+# RESOLUTION
 # =========================
 class TradeResolution(models.Model):
     issue = models.OneToOneField(TradeIssue, on_delete=models.CASCADE)
