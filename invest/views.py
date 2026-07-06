@@ -15,15 +15,25 @@ from django.core.exceptions import ValidationError
 import random, string
 import re
 
+
+from django.db.models import Sum
+from django.http import JsonResponse
+from django.utils import timezone
+from datetime import timedelta
+
 from .models import (
-    Investor, Asset, AssetCategory,
+    Investor, Wallet, Investment, Stock,
     PortfolioHolding, Trade, PasswordResetToken,
-    TradeIssue, TradeResolution, System_User
+    Loan, InterestHistory, LiquidityPool, System_User
 )
 
+from django.views.generic import TemplateView
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Sum
+
 from .forms import (
-    LoginForm, TradeForm, DepositForm, WithdrawalForm,
-    IssueForm, SignUpForm, ResetForm, PasswordResetForm
+    LoginForm, InvestorLendForm, BorrowForm, BuyStockForm,
+    SellStockForm, SignUpForm, ResetForm, PasswordResetForm
 )
 
 
@@ -178,17 +188,7 @@ class ResetPasswordConfirmView(View):
 
         # If form is not valid, show errors
         return render(request, self.template_name, {'form': form, 'token': token, 'error_message': "Invalid form submission."})
-from django.views.generic import TemplateView
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Sum
-from .models import (
-    Wallet,
-    Investment,
-    Loan,
-    Stock,
-    InterestHistory,
-    LiquidityPool
-)
+
 
 # =========================
 # DASHBOARD
@@ -212,27 +212,6 @@ class DashboardView(View):
         }
 
         return render(request, 'dashboard.html', context)
-
-# views.py
-
-from django.views.generic import TemplateView
-from django.shortcuts import render, redirect
-from django.db.models import Sum
-from django.http import JsonResponse
-from django.utils import timezone
-from datetime import timedelta
-import random
-
-from .models import (
-    Investor,
-    Wallet,
-    Investment,
-    Loan,
-    Stock,
-    LiquidityPool,
-    InterestHistory,
-    System_User
-)
 
 
 # ====================================================

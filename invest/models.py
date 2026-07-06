@@ -46,6 +46,7 @@ class Wallet(models.Model):
     investor=models.ForeignKey(Investor, on_delete=models.CASCADE, help_text="Please Enter Investor Email Address")
     available_balance = models.DecimalField(max_digits=15, decimal_places=2, default=0, help_text="Please Enter Available Wallet Balance")
     locked_balance = models.DecimalField(max_digits=15, decimal_places=2, default=0, help_text="Please Enter Locked Balance")
+    invested_amount = models.DecimalField(max_digits=15, decimal_places=2, default=0, help_text="Please Enter Investement Balance")
     borrowed_balance = models.DecimalField(max_digits=15, decimal_places=2, default=0, help_text="Please Enter Borrowed Balance")
     collateral_balance = models.DecimalField(max_digits=15, decimal_places=2, default=0, help_text="Please Enter Collateral Balance")
 
@@ -59,7 +60,7 @@ class Wallet(models.Model):
 
 class LiquidityPool(models.Model):
 
-    total_available=models.DecimalField(max_digits=15, decimal_places=2, default=1000000, help_text="Please Enter Total Available Amount")
+    total_available=models.DecimalField(max_digits=15, decimal_places=2, default=100000, help_text="Please Enter Total Available Amount")
     total_borrowed=models.DecimalField(max_digits=15, decimal_places=2, default=0, help_text="Please Enter Total Amount Borrowed")
     total_invested=models.DecimalField(max_digits=15, decimal_places=2, default=0, help_text="Please Enter Total Amount Invested")
     total_collateral=models.DecimalField(max_digits=15, decimal_places=2, default=0, help_text="Please Enter Total Collateral Amount")
@@ -67,25 +68,17 @@ class LiquidityPool(models.Model):
 
 
 # ===========================================
-# INVESTMENT
+# INVESTMENT: INVESTOR CAN INVEST MONEY FOR UNSPECIFIED PERIOD AND CAN WITHDRAW HIS MONEY AT ANY TIME
 # ===========================================
 
 class Investment(models.Model):
 
-    STATUS = (
-        ('ACTIVE','ACTIVE'),
-        ('MATURED','MATURED'),
-        ('RELEASED','RELEASED')
-    )
-
     investor=models.ForeignKey(Investor, on_delete=models.CASCADE, help_text="Please Enter Investor Email Address")
     amount=models.DecimalField(max_digits=15,decimal_places=2, help_text="Please Enter Amount Invested")
     interest_rate=models.DecimalField(max_digits=5, decimal_places=2, help_text="Please Enter Interest Rate for Investment")
-    duration_days=models.IntegerField()
-    expected_return=models.DecimalField(max_digits=15, decimal_places=2, default=0, help_text="Please Enter Expected Return")
-    status=models.CharField(max_length=20, choices=STATUS, default='ACTIVE', help_text="Please Select Investment Status")
+    duration_days=models.IntegerField()#Here, an investor must indicate investment duration in days; an investor reinvesting the money is restricted to number of days he/she borrowed the money(days remaining to repay thre loan).
+    amount_accrued=models.DecimalField(max_digits=15, decimal_places=2, default=0, help_text="Please Enter Acrued Amount")#Calculate this using interest rate, time and amount invested
     start_date=models.DateTimeField(auto_now_add=True)
-    end_date=models.DateTimeField()
 
 
 # ===========================================
@@ -94,36 +87,14 @@ class Investment(models.Model):
 
 class Loan(models.Model):
 
-    STATUS = (
-        ('ACTIVE','ACTIVE'),
-        ('PAID','PAID'),
-        ('OVERDUE','OVERDUE'),
-        ('LIQUIDATED','LIQUIDATED')
-    )
-
     borrower=models.ForeignKey(Investor, on_delete=models.CASCADE, help_text="Please Select Investor")
     principal=models.DecimalField(max_digits=15, decimal_places=2, help_text="Please Enter Principal Amount")
     collateral=models.DecimalField(max_digits=15, decimal_places=2, help_text="Please Enter Collateral Amount")
     interest_rate=models.DecimalField(max_digits=5, decimal_places=2, help_text="Please Enter Interest Rate")
     amount_due=models.DecimalField(max_digits=15, decimal_places=2, help_text="Please Enter Amount Due")
     duration_days=models.IntegerField()
+    start_date=models.DateTimeField(auto_now_add=True)
     due_date=models.DateTimeField()
-    status=models.CharField(max_length=20, choices=STATUS, default='ACTIVE', help_text="Please Enter Loan Status")
-
-'''
-# ===========================================
-# LOAN TRACKER
-# ===========================================
-
-class LoanTracker(models.Model):
-
-    loan=models.ForeignKey(Loan, on_delete=models.CASCADE)
-    investment=models.ForeignKey(Investment, on_delete=models.CASCADE)
-    amount_allocated=models.DecimalField(max_digits=15, decimal_places=2)
-    profit_generated=models.DecimalField(max_digits=15, decimal_places=2, default=0)
-    remaining_balance=models.DecimalField(max_digits=15, decimal_places=2)
-'''
-
 
 # =========================
 # STOCK     (Add symbol field) ; bank shares, eg Equity shares, KPLC shares
@@ -139,22 +110,15 @@ class Stock(models.Model):
 
 
 # ===========================================
-# PORTFOLIO
+# PORTFOLIO : FOR NOW YOU DON'T BUY STOCK USING BORROWED MONEY
 # ===========================================
 
 class PortfolioHolding(models.Model):
-
-    FUND_SOURCE = (
-
-        ('OWN','OWN'),
-        ('BORROWED','BORROWED')
-    )
 
     investor=models.ForeignKey(Investor, on_delete=models.CASCADE, help_text="Please Select Investor")
     stock=models.ForeignKey(Stock, on_delete=models.CASCADE, help_text="Please Select Stock")
     quantity=models.IntegerField()
     average_buy_price=models.DecimalField(max_digits=15, decimal_places=2, help_text="Please Enter Average Buy Price")
-    fund_source=models.CharField(max_length=20, choices=FUND_SOURCE, help_text="Please Select Fund Source")
 
 
 # ===========================================

@@ -1,10 +1,11 @@
 from django import forms
 from .models import (
-    Investor, Asset, Trade,
-    TradeIssue, TradeResolution,
+    Investor, Trade, Investment, Loan, Stock, PortfolioHolding,
     System_User
 )
 
+from decimal import Decimal
+from django.core.exceptions import ValidationError
 import random
 import string
 
@@ -104,13 +105,6 @@ class ResetForm(forms.Form):  # Use forms.Form instead of ModelForm
         return user
 
 
-# forms.py
-
-from django import forms
-from django.core.exceptions import ValidationError
-from .models import Investment
-
-
 class InvestorLendForm(forms.Form):
 
     amount = forms.DecimalField(
@@ -147,11 +141,6 @@ class InvestorLendForm(forms.Form):
         return amount
 
 
-from django import forms
-from decimal import Decimal
-from .models import Loan
-
-
 class BorrowForm(forms.ModelForm):
 
     class Meta:
@@ -159,7 +148,6 @@ class BorrowForm(forms.ModelForm):
 
         fields = [
             'principal',
-            'collateral',
             'duration_days'
         ]
 
@@ -171,14 +159,7 @@ class BorrowForm(forms.ModelForm):
                     'class': 'form-control'
                 }
             ),
-
-            'collateral': forms.NumberInput(
-                attrs={
-                    'placeholder': 'Enter collateral amount',
-                    'class': 'form-control'
-                }
-            ),
-
+            #Ensure to Restrict Investment duration for Borrowed money to Days remaining to repay the Loan
             'duration_days': forms.NumberInput(
                 attrs={
                     'placeholder': 'Loan period in days',
@@ -205,28 +186,22 @@ class BorrowForm(forms.ModelForm):
             'principal'
         )
 
-        collateral = cleaned_data.get(
-            'collateral'
-        )
 
-        if principal and collateral:
+        if principal:
 
             interest_amount = (
                 principal *
                 self.interest_rate /
                 Decimal('100')
             )
-
-            if collateral < interest_amount:
+            #Here, Collateral is tracked from the given Investor's Wallet; to remove the error, I have placed Principal for Collateral, Ensure to Replace
+            if principal < interest_amount:
 
                 raise forms.ValidationError(
                     f"Collateral cannot cover interest amount of Ksh {interest_amount}"
                 )
 
         return cleaned_data
-    
-from django import forms
-from .models import Stock
 
 
 class BuyStockForm(forms.Form):
@@ -256,9 +231,6 @@ class BuyStockForm(forms.Form):
             }
         )
     )
-    
-from django import forms
-from .models import PortfolioHolding
 
 
 class SellStockForm(forms.Form):

@@ -37,18 +37,18 @@ class LiquidityPoolAdmin(admin.ModelAdmin):
 # =========================
 @admin.register(Investment)
 class InvestmentAdmin(admin.ModelAdmin):
-    list_display = ('investor', 'amount', 'interest_rate', 'status')
-    list_filter = ('status',)
-    search_fields = ('investor', 'amount', 'interest_rate', 'status')
+    list_display = ('investor', 'amount', 'interest_rate', 'amount_accrued')
+    list_filter = ('investor',)
+    search_fields = ('investor', 'amount', 'interest_rate', 'amount_accrued')
 
 # =========================
 # LOAN
 # =========================
 @admin.register(Loan)
 class LoanAdmin(admin.ModelAdmin):
-    list_display = ('borrower', 'principal', 'interest_rate', 'status')
-    list_filter = ('status',)
-    search_fields = ('borrower', 'principal', 'interest_rate', 'status')
+    list_display = ('borrower', 'principal', 'interest_rate', 'amount_due')
+    list_filter = ('borrower',)
+    search_fields = ('borrower', 'principal', 'interest_rate', 'amount_due')
     
     
 # =========================
@@ -65,7 +65,7 @@ class StockAdmin(admin.ModelAdmin):
 # =========================
 @admin.register(PortfolioHolding)
 class PortfolioHoldingAdmin(admin.ModelAdmin):
-    list_display = ('investor', 'stock', 'quantity', 'average_buy_price', 'fund_source')
+    list_display = ('investor', 'stock', 'quantity', 'average_buy_price')
     list_filter = ('investor', 'stock')
     search_fields = ('investor', 'stock')  
 
