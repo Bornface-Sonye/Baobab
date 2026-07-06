@@ -1,103 +1,308 @@
 {% extends 'base_dashboard.html' %}
+{% load static %}
 
 {% block content %}
-<style>
-    /* Sidebar styling */
-    .sidebar-card {
-        background-color: #f8f9fa;
-        border-radius: 10px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        padding: 15px;
-        margin-bottom: 20px;
-    }
 
-    .sidebar-header {
-        font-size: 1.2rem;
-        font-weight: bold;
-        color: #343a40;
-        margin-bottom: 10px;
-    }
+<link rel="stylesheet"
+href="{% static 'css/investment_dashboard.css' %}">
 
-    .stat-item {
-        font-size: 1rem;
-        color: #555;
-        margin-bottom: 8px;
-        font-weight: 500;
-    }
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    /* Main content styling */
-    .card-header {
-        background-color: #343a40;
-        color: white;
-    }
+<div class="container-fluid dashboard-container">
 
-    .card-footer {
-        background-color: #f8f9fa;
-        font-size: 0.9rem;
-    }
 
-    .list-group-item {
-        border-radius: 5px;
-        margin-bottom: 10px;
-    }
-</style>
+<!-- ========================= -->
+<!-- Welcome -->
+<!-- ========================= -->
 
-<div class="container-fluid mt-4">
-    <div class="row">
-        <div class="col-lg-3">
-            <!-- Sidebar Card -->
-            <div class="sidebar-card">
-                <div class="sidebar-header">
-                    <p class="stat-item">Department: {{ department_name }}</p>
-                </div>
-            </div>
-            <div class="sidebar-card">
-                <div class="sidebar-header">
-                    Welcome  Back !!!
-                </div>
-                <div class="sidebar-header">
-                    Welcome, {{ last_name }}
-                </div>
-                <p class="stat-item">Total Students: {{ total_students }}</p>
-                <p class="stat-item">Total Lecturers: {{ total_lecturers_in_department }}</p>
-                <p class="stat-item">Total Units: {{ total_units_for_lecturer }}</p>
-                <p class="stat-item">Total Complaints: {{ related_complaints_count }}</p>
-                <p class="stat-item">Total Responses: {{ related_responses_count }}</p>
-            </div>
-        </div>
+<div class="welcome-card">
 
-        <div class="col-lg-9">
-            <!-- Main content area -->
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">Department Chairperson</h3>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h5>Units</h5>
-                            <ul class="list-group">
-                                {% for unit in units %}
-                                <li class="list-group-item">{{ unit.unit_name }}</li>
-                                {% endfor %}
-                            </ul>
-                        </div>
+    <div>
 
-                        <div class="col-md-6">
-                            <h5>Courses</h5>
-                            <ul class="list-group">
-                                {% for course in courses %}
-                                <li class="list-group-item">{{ course.course_name }}</li>
-                                {% endfor %}
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-footer text-center">
-                    Powered by Azdak's Software Solution
-                </div>
-            </div>
-        </div>
+        <h2>
+
+            Welcome Back,
+            {{last_name}}
+
+        </h2>
+
+        <p>
+
+            Monitor investments, loans and interest movement.
+
+        </p>
+
     </div>
+
 </div>
+
+
+<!-- ========================= -->
+<!-- BALANCE CARDS -->
+<!-- ========================= -->
+
+<div class="row mb-4">
+
+
+<div class="col-lg-4">
+
+<div class="balance-card wallet-card">
+
+<i class="mdi mdi-wallet"></i>
+
+<h5>
+
+Wallet Balance
+
+</h5>
+
+<h3>
+
+KES {{wallet.available_balance}}
+
+</h3>
+
+</div>
+
+</div>
+
+
+
+<div class="col-lg-4">
+
+<div class="balance-card investment-card">
+
+<i class="mdi mdi-finance"></i>
+
+<h5>
+
+Investment Balance
+
+</h5>
+
+<h3>
+
+KES {{total_invested}}
+
+</h3>
+
+</div>
+
+</div>
+
+
+
+<div class="col-lg-4">
+
+<div class="balance-card borrowed-card">
+
+<i class="mdi mdi-bank"></i>
+
+<h5>
+
+Borrowed Balance
+
+</h5>
+
+<h3>
+
+KES {{wallet.borrowed_balance}}
+
+</h3>
+
+</div>
+
+</div>
+
+
+</div>
+
+
+<!-- ========================= -->
+<!-- INTEREST GRAPH -->
+<!-- ========================= -->
+
+<div class="row">
+
+<div class="col-lg-12">
+
+<div class="graph-card">
+
+<h4>
+
+Interest Rate Deviation (Last 24 Hours)
+
+</h4>
+
+<canvas
+id="interestChart">
+
+</canvas>
+
+</div>
+
+</div>
+
+</div>
+
+
+</div>
+
+
+
+<script>
+
+
+const labels=[
+
+{% for item in graph_labels %}
+
+"{{item}}",
+
+{% endfor %}
+
+]
+
+
+const rates=[
+
+{% for item in graph_values %}
+
+{{item}},
+
+{% endfor %}
+
+]
+
+
+
+const ctx=document.getElementById(
+'interestChart'
+)
+
+
+const chart=new Chart(
+
+ctx,
+
+{
+
+type:'line',
+
+data:{
+
+labels:labels,
+
+datasets:[{
+
+label:'Interest Rate (%)',
+
+data:rates,
+
+fill:true,
+
+tension:.45,
+
+pointRadius:0,
+
+borderWidth:3
+
+}]
+
+},
+
+options:{
+
+responsive:true,
+
+maintainAspectRatio:false,
+
+animation:{
+
+duration:1000
+
+},
+
+interaction:{
+
+intersect:false,
+
+mode:'index'
+
+},
+
+scales:{
+
+x:{
+
+title:{
+
+display:true,
+
+text:'Hours'
+
+}
+
+},
+
+y:{
+
+title:{
+
+display:true,
+
+text:'Interest Rate %'
+
+}
+
+}
+
+}
+
+}
+
+}
+
+)
+
+
+
+function updateGraph(){
+
+fetch('/interest-graph-data/')
+
+.then(
+
+response=>response.json()
+
+)
+
+.then(
+
+data=>{
+
+chart.data.labels=data.time
+
+chart.data.datasets[0].data=data.rate
+
+chart.update()
+
+}
+
+)
+
+}
+
+
+setInterval(
+
+updateGraph,
+
+1000
+
+)
+
+
+</script>
+
 {% endblock %}

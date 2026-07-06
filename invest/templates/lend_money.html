@@ -1,0 +1,74 @@
+{% extends 'base_dashboard.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="lend-container">
+
+    <div class="card">
+
+        <h2>
+            Lend Money
+        </h2>
+
+        <p class="description">
+
+            Invest money and earn interest
+            after maturity.
+
+        </p>
+
+        {% if messages %}
+
+            {% for message in messages %}
+
+            <div class="message">
+
+                {{message}}
+
+            </div>
+
+            {% endfor %}
+
+        {% endif %}
+
+
+        <form method="POST">
+
+            {% csrf_token %}
+
+            <div class="field">
+
+                <label>
+                    Amount
+                </label>
+
+                {{form.amount}}
+
+            </div>
+
+            <div class="field">
+
+                <label>
+                    Duration (Days)
+                </label>
+
+                {{form.duration_days}}
+
+            </div>
+
+            <button
+                class="submit-btn"
+                type="submit">
+
+                Invest Money
+
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
+
+{% endblock %}

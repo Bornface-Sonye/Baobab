@@ -178,7 +178,17 @@ class ResetPasswordConfirmView(View):
 
         # If form is not valid, show errors
         return render(request, self.template_name, {'form': form, 'token': token, 'error_message': "Invalid form submission."})
-
+from django.views.generic import TemplateView
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Sum
+from .models import (
+    Wallet,
+    Investment,
+    Loan,
+    Stock,
+    InterestHistory,
+    LiquidityPool
+)
 
 # =========================
 # DASHBOARD
@@ -203,3 +213,1008 @@ class DashboardView(View):
 
         return render(request, 'dashboard.html', context)
 
+# views.py
+
+from django.views.generic import TemplateView
+from django.shortcuts import render, redirect
+from django.db.models import Sum
+from django.http import JsonResponse
+from django.utils import timezone
+from datetime import timedelta
+import random
+
+from .models import (
+    Investor,
+    Wallet,
+    Investment,
+    Loan,
+    Stock,
+    LiquidityPool,
+    InterestHistory,
+    System_User
+)
+
+
+# ====================================================
+# TEMPORARY INTEREST RATE ENGINE
+# Updates every 10 seconds
+# ====================================================
+
+def update_interest_rate():
+
+    liquidity = LiquidityPool.objects.first()
+
+    if not liquidity:
+
+        liquidity = LiquidityPool.objects.create(
+            total_available=1000000,
+            current_interest_rate=10
+        )
+
+
+    latest = InterestHistory.objects.order_by(
+        '-timestamp'
+    ).first()
+
+
+    now = timezone.now()
+
+
+    if latest:
+
+        elapsed = (
+            now - latest.timestamp
+        ).total_seconds()
+
+
+        if elapsed < 10:
+            return
+
+
+    current_rate = float(
+        liquidity.current_interest_rate
+    )
+
+
+    liquidity_amount = float(
+        liquidity.total_available
+    )
+
+
+    # smooth movement
+
+    if liquidity_amount < 1000000:
+
+        movement=.25
+
+    elif liquidity_amount>3000000:
+
+        movement=-.20
+
+    else:
+
+        movement=.05
+
+
+    noise=random.uniform(
+        -.10,
+        .10
+    )
+
+
+    new_rate=round(
+        current_rate+
+        movement+
+        noise,
+        2
+    )
+
+
+    new_rate=max(
+        5,
+        min(
+            new_rate,
+            20
+        )
+    )
+
+
+    liquidity.current_interest_rate=new_rate
+
+    liquidity.save()
+
+
+    InterestHistory.objects.create(
+
+        interest_rate=new_rate,
+
+        liquidity=liquidity.total_available
+
+    )
+
+
+# ====================================================
+# DASHBOARD
+# ====================================================
+
+
+class DashboardView(TemplateView):
+
+
+    def get(self,request):
+
+
+        username=request.session.get(
+            'username'
+        )
+
+
+        if not username:
+
+            return redirect(
+                'login'
+            )
+
+
+        try:
+
+            user=System_User.objects.get(
+                username=username
+            )
+
+        except System_User.DoesNotExist:
+
+            return redirect(
+                'login'
+            )
+
+
+        # TEMPORARY
+        # until Investor links to System_User
+
+        investor=Investor.objects.first()
+
+
+        if not investor:
+
+            return redirect(
+                'login'
+            )
+
+
+        wallet,created=Wallet.objects.get_or_create(
+
+            investor=investor
+        )
+
+
+        total_invested=Investment.objects.filter(
+
+            investor=investor,
+            status='ACTIVE'
+
+        ).aggregate(
+
+            Sum(
+                'amount'
+            )
+
+        )['amount__sum'] or 0
+
+
+
+        total_loan=Loan.objects.filter(
+
+            borrower=investor,
+            status='ACTIVE'
+
+        ).aggregate(
+
+            Sum(
+                'principal'
+            )
+
+        )['principal__sum'] or 0
+
+
+
+        recent_investments=Investment.objects.filter(
+
+            investor=investor
+
+        ).order_by(
+
+            '-start_date'
+
+        )[:5]
+
+
+
+        recent_loans=Loan.objects.filter(
+
+            borrower=investor
+
+        ).order_by(
+
+            '-due_date'
+
+        )[:5]
+
+
+
+        stocks=Stock.objects.all()
+
+
+
+        liquidity=LiquidityPool.objects.first()
+
+
+        update_interest_rate()
+
+
+        graph=InterestHistory.objects.filter(
+
+            timestamp__gte=
+
+            timezone.now()
+
+            -
+
+            timedelta(
+                hours=24
+            )
+
+        ).order_by(
+
+            'timestamp'
+
+        )
+
+
+
+        context={
+
+            'last_name':
+
+            user.username,
+
+
+            'wallet':
+
+            wallet,
+
+
+            'total_invested':
+
+            total_invested,
+
+
+            'total_loan':
+
+            total_loan,
+
+
+            'recent_investments':
+
+            recent_investments,
+
+
+            'recent_loans':
+
+            recent_loans,
+
+
+            'stocks':
+
+            stocks,
+
+
+            'liquidity':
+
+            liquidity,
+
+
+            'interest_history':
+
+            graph,
+
+
+            'user':
+
+            user,
+
+
+            'graph_labels':[
+
+                x.timestamp.strftime(
+                    "%H:%M:%S"
+                )
+
+                for x in graph
+
+            ],
+
+
+            'graph_values':[
+
+                float(
+                    x.interest_rate
+                )
+
+                for x in graph
+
+            ],
+
+
+            'stock_labels':[
+
+                x.symbol
+                for x in stocks
+
+            ],
+
+
+            'stock_values':[
+
+                float(
+                    x.current_price
+                )
+
+                for x in stocks
+
+            ]
+
+        }
+
+
+        return render(
+
+            request,
+            'dashboard.html',
+            context
+
+        )
+
+
+
+# ====================================================
+# AJAX GRAPH UPDATE
+# ====================================================
+
+
+def dashboard_graph_data(
+    request
+):
+
+
+    update_interest_rate()
+
+
+    graph=InterestHistory.objects.filter(
+
+        timestamp__gte=
+
+        timezone.now()
+
+        -
+
+        timedelta(
+            hours=24
+        )
+
+    ).order_by(
+        'timestamp'
+    )
+
+
+    stocks=Stock.objects.all()
+
+
+    return JsonResponse({
+
+        'time':[
+
+            x.timestamp.strftime(
+                "%H:%M:%S"
+            )
+
+            for x in graph
+
+        ],
+
+        'rate':[
+
+            float(
+                x.interest_rate
+            )
+
+            for x in graph
+
+        ],
+
+        'stocks':[
+
+            x.symbol
+
+            for x in stocks
+
+        ],
+
+        'stock_prices':[
+
+            float(
+                x.current_price
+            )
+
+            for x in stocks
+
+        ]
+
+    })    
+    
+
+# views.py
+
+from decimal import Decimal
+from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.shortcuts import redirect
+from django.urls import reverse_lazy
+from django.views.generic import FormView
+
+from .forms import InvestorLendForm
+from .models import (
+    Wallet,
+    Investment,
+    LiquidityPool
+)
+
+
+class InvestorLendView(LoginRequiredMixin, FormView):
+
+    template_name='lend_money.html'
+    form_class=InvestorLendForm
+    success_url=reverse_lazy(
+        'lend_money'
+    )
+
+
+    def form_valid(self,form):
+
+        investor=self.request.user
+
+        wallet=Wallet.objects.get(
+            investor=investor
+        )
+
+        liquidity=LiquidityPool.objects.first()
+
+        amount=form.cleaned_data[
+            'amount'
+        ]
+
+        duration=form.cleaned_data[
+            'duration_days'
+        ]
+
+
+        if wallet.available_balance<amount:
+
+            messages.error(
+                self.request,
+                "Insufficient wallet balance"
+            )
+
+            return redirect(
+                'lend_money'
+            )
+
+
+        interest=liquidity.current_interest_rate
+
+
+        expected_return=amount + (
+            amount *
+            Decimal(
+                interest/100
+            )
+        )
+
+
+        wallet.available_balance-=amount
+
+        wallet.locked_balance+=amount
+
+        wallet.save()
+
+
+        liquidity.total_available+=amount
+        liquidity.total_invested+=amount
+
+        liquidity.save()
+
+
+        Investment.objects.create(
+
+            investor=investor,
+
+            amount=amount,
+
+            interest_rate=interest,
+
+            duration_days=duration,
+
+            expected_return=expected_return,
+
+            end_date=timezone.now()+timezone.timedelta(
+                days=duration
+            )
+        )
+
+
+        messages.success(
+
+            self.request,
+
+            f"Investment successful at {interest}% interest"
+
+        )
+
+        return super().form_valid(
+            form
+        )
+        
+from datetime import timedelta
+from django.shortcuts import render
+from django.shortcuts import redirect
+from django.shortcuts import get_object_or_404
+from django.contrib import messages
+from django.utils import timezone
+
+from .models import (
+    Investor,
+    Wallet,
+    Loan,
+    LiquidityPool
+)
+
+from .forms import BorrowForm
+
+
+def borrow_money(request, investor_id):
+
+    investor = get_object_or_404(
+        Investor,
+        id=investor_id
+    )
+
+    wallet = Wallet.objects.filter(
+        investor=investor
+    ).first()
+
+    pool = LiquidityPool.objects.first()
+
+    interest_rate = pool.current_interest_rate
+
+    if request.method == "POST":
+
+        form = BorrowForm(
+            request.POST,
+            interest_rate=interest_rate
+        )
+
+        if form.is_valid():
+
+            loan = form.save(
+                commit=False
+            )
+
+            principal = form.cleaned_data[
+                'principal'
+            ]
+
+            collateral = form.cleaned_data[
+                'collateral'
+            ]
+
+            if wallet is None:
+
+                messages.error(
+                    request,
+                    "Wallet does not exist"
+                )
+
+                return redirect(
+                    'borrow',
+                    investor.id
+                )
+
+            if wallet.collateral_balance < collateral:
+
+                messages.error(
+                    request,
+                    "Insufficient collateral balance"
+                )
+
+                return redirect(
+                    'borrow',
+                    investor.id
+                )
+
+            if pool.total_available < principal:
+
+                messages.error(
+                    request,
+                    "System currently has insufficient funds"
+                )
+
+                return redirect(
+                    'borrow',
+                    investor.id
+                )
+
+            loan.borrower = investor
+
+            loan.interest_rate = interest_rate
+
+            loan.due_date = (
+                timezone.now() +
+                timedelta(
+                    days=loan.duration_days
+                )
+            )
+
+            loan.save()
+
+            wallet.available_balance += principal
+
+            wallet.borrowed_balance += principal
+
+            wallet.collateral_balance -= collateral
+
+            wallet.save()
+
+            pool.total_available -= principal
+
+            pool.total_borrowed += principal
+
+            pool.save()
+
+            messages.success(
+                request,
+                "Loan approved successfully"
+            )
+
+            return redirect(
+                'borrow',
+                investor.id
+            )
+
+    else:
+
+        form = BorrowForm(
+            interest_rate=interest_rate
+        )
+
+    context = {
+
+        'form': form,
+        'wallet': wallet,
+        'interest': interest_rate,
+        'investor': investor
+    }
+
+    return render(
+        request,
+        'borrow.html',
+        context
+    )
+    
+from decimal import Decimal
+from django.db import transaction
+
+from .models import (
+    Investor,
+    Wallet,
+    Stock,
+    PortfolioHolding,
+    Trade
+)
+
+from .forms import BuyStockForm
+
+
+def buy_stock(request,investor_id):
+
+    investor=Investor.objects.get(
+        id=investor_id
+    )
+
+    wallet=Wallet.objects.filter(
+        investor=investor
+    ).first()
+
+
+    if request.method=="POST":
+
+        form=BuyStockForm(
+            request.POST
+        )
+
+        if form.is_valid():
+
+            stock=form.cleaned_data[
+                'stock'
+            ]
+
+            quantity=form.cleaned_data[
+                'quantity'
+            ]
+
+            total_price=(
+                stock.current_price*
+                quantity
+            )
+
+
+            if quantity>stock.available_units:
+
+                return render(
+                    request,
+                    'buy_stock.html',
+                    {
+                    'form':form,
+                    'wallet':wallet,
+                    'error':
+                    'Not enough stock available'
+                    }
+                )
+
+
+            if wallet.available_balance<total_price:
+
+                return render(
+                    request,
+                    'buy_stock.html',
+                    {
+                    'form':form,
+                    'wallet':wallet,
+                    'error':
+                    'Insufficient balance'
+                    }
+                )
+
+
+            with transaction.atomic():
+
+                wallet.available_balance-=total_price
+                wallet.save()
+
+
+                stock.available_units-=quantity
+                stock.save()
+
+
+                portfolio=PortfolioHolding.objects.filter(
+                    investor=investor,
+                    stock=stock
+                ).first()
+
+
+                if portfolio:
+
+                    old_total=(
+                        portfolio.quantity*
+                        portfolio.average_buy_price
+                    )
+
+                    new_total=(
+                        quantity*
+                        stock.current_price
+                    )
+
+                    total_quantity=(
+                        portfolio.quantity+
+                        quantity
+                    )
+
+                    portfolio.average_buy_price=(
+                        (
+                        old_total+
+                        new_total
+                        )/
+                        total_quantity
+                    )
+
+                    portfolio.quantity=(
+                        total_quantity
+                    )
+
+                    portfolio.save()
+
+                else:
+
+                    PortfolioHolding.objects.create(
+
+                        investor=investor,
+
+                        stock=stock,
+
+                        quantity=quantity,
+
+                        average_buy_price=stock.current_price,
+
+                        fund_source='OWN'
+                    )
+
+
+                Trade.objects.create(
+
+                    investor=investor,
+
+                    stock=stock,
+
+                    trade_type='BUY',
+
+                    quantity=quantity,
+
+                    price=stock.current_price
+                )
+
+
+            return render(
+                request,
+                'buy_stock.html',
+                {
+                'form':BuyStockForm(),
+                'wallet':wallet,
+                'success':
+                'Stock purchased successfully'
+                }
+            )
+
+    else:
+
+        form=BuyStockForm()
+
+
+    return render(
+        request,
+        'buy_stock.html',
+        {
+        'form':form,
+        'wallet':wallet
+        }
+    )
+    
+from django.db import transaction
+from django.shortcuts import get_object_or_404
+
+from .models import (
+    Investor,
+    Wallet,
+    PortfolioHolding,
+    Trade
+)
+
+from .forms import SellStockForm
+
+
+def sell_stock(request,investor_id):
+
+    investor=get_object_or_404(
+        Investor,
+        id=investor_id
+    )
+
+    wallet=Wallet.objects.filter(
+        investor=investor
+    ).first()
+
+
+    if request.method=="POST":
+
+        form=SellStockForm(
+            request.POST,
+            investor=investor
+        )
+
+        if form.is_valid():
+
+            portfolio=form.cleaned_data[
+                'stock'
+            ]
+
+            quantity=form.cleaned_data[
+                'quantity'
+            ]
+
+            if quantity>portfolio.quantity:
+
+                return render(
+                    request,
+                    'sell_stock.html',
+                    {
+                        'form':form,
+                        'wallet':wallet,
+                        'error':
+                        'Insufficient stock quantity'
+                    }
+                )
+
+            stock=portfolio.stock
+
+            total_sale=(
+                stock.current_price*
+                quantity
+            )
+
+            with transaction.atomic():
+
+                wallet.available_balance+=(
+                    total_sale
+                )
+
+                wallet.save()
+
+                stock.available_units+=(
+                    quantity
+                )
+
+                stock.save()
+
+                portfolio.quantity-=(
+                    quantity
+                )
+
+                if portfolio.quantity==0:
+
+                    portfolio.delete()
+
+                else:
+
+                    portfolio.save()
+
+
+                Trade.objects.create(
+
+                    investor=investor,
+
+                    stock=stock,
+
+                    trade_type='SELL',
+
+                    quantity=quantity,
+
+                    price=stock.current_price
+                )
+
+
+            return render(
+                request,
+                'sell_stock.html',
+                {
+                    'form':SellStockForm(
+                        investor=investor
+                    ),
+                    'wallet':wallet,
+                    'success':
+                    'Stock sold successfully'
+                }
+            )
+
+    else:
+
+        form=SellStockForm(
+            investor=investor
+        )
+
+
+    return render(
+        request,
+        'sell_stock.html',
+        {
+            'form':form,
+            'wallet':wallet
+        }
+    )

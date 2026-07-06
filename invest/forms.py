@@ -104,97 +104,208 @@ class ResetForm(forms.Form):  # Use forms.Form instead of ModelForm
         return user
 
 
-# =========================
-# TRADE FORM (BUY / SELL)
-# =========================
-class TradeForm(forms.ModelForm):
+# forms.py
+
+from django import forms
+from django.core.exceptions import ValidationError
+from .models import Investment
+
+
+class InvestorLendForm(forms.Form):
+
+    amount = forms.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        min_value=100,
+        widget=forms.NumberInput(
+            attrs={
+                'class':'form-control',
+                'placeholder':'Enter amount'
+            }
+        )
+    )
+
+    duration_days = forms.IntegerField(
+        min_value=1,
+        widget=forms.NumberInput(
+            attrs={
+                'class':'form-control',
+                'placeholder':'Duration in days'
+            }
+        )
+    )
+
+    def clean_amount(self):
+
+        amount=self.cleaned_data['amount']
+
+        if amount<=0:
+            raise ValidationError(
+                "Amount must be greater than zero"
+            )
+
+        return amount
+
+
+from django import forms
+from decimal import Decimal
+from .models import Loan
+
+
+class BorrowForm(forms.ModelForm):
 
     class Meta:
-        model = Trade
-        fields = ['asset', 'trade_type', 'quantity']
+        model = Loan
+
+        fields = [
+            'principal',
+            'collateral',
+            'duration_days'
+        ]
+
         widgets = {
-            'asset': forms.Select(attrs={'class': 'form-control'}),
-            'trade_type': forms.Select(attrs={'class': 'form-control'}),
-            'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
+
+            'principal': forms.NumberInput(
+                attrs={
+                    'placeholder': 'Enter amount to borrow',
+                    'class': 'form-control'
+                }
+            ),
+
+            'collateral': forms.NumberInput(
+                attrs={
+                    'placeholder': 'Enter collateral amount',
+                    'class': 'form-control'
+                }
+            ),
+
+            'duration_days': forms.NumberInput(
+                attrs={
+                    'placeholder': 'Loan period in days',
+                    'class': 'form-control'
+                }
+            )
+
         }
 
-    def clean_quantity(self):
-        qty = self.cleaned_data.get("quantity")
-        if qty <= 0:
-            raise forms.ValidationError("Quantity must be greater than 0")
-        return qty
+    def __init__(self, *args, **kwargs):
+
+        self.interest_rate = kwargs.pop(
+            'interest_rate',
+            Decimal('10')
+        )
+
+        super().__init__(*args, **kwargs)
+
+    def clean(self):
+
+        cleaned_data = super().clean()
+
+        principal = cleaned_data.get(
+            'principal'
+        )
+
+        collateral = cleaned_data.get(
+            'collateral'
+        )
+
+        if principal and collateral:
+
+            interest_amount = (
+                principal *
+                self.interest_rate /
+                Decimal('100')
+            )
+
+            if collateral < interest_amount:
+
+                raise forms.ValidationError(
+                    f"Collateral cannot cover interest amount of Ksh {interest_amount}"
+                )
+
+        return cleaned_data
+    
+from django import forms
+from .models import Stock
 
 
-# =========================
-# DEPOSIT FORM
-# =========================
-class DepositForm(forms.Form):
-    amount = forms.DecimalField(
+class BuyStockForm(forms.Form):
+
+    stock = forms.ModelChoiceField(
+
+        queryset=Stock.objects.all(),
+
+        empty_label="Select Stock",
+
+        widget=forms.Select(
+            attrs={
+                'class':'form-control'
+            }
+        )
+    )
+
+
+    quantity=forms.IntegerField(
+
         min_value=1,
-        widget=forms.NumberInput(attrs={'class': 'form-control'})
+
+        widget=forms.NumberInput(
+            attrs={
+                'class':'form-control',
+                'placeholder':'Enter quantity'
+            }
+        )
+    )
+    
+from django import forms
+from .models import PortfolioHolding
+
+
+class SellStockForm(forms.Form):
+
+    stock = forms.ModelChoiceField(
+        queryset=PortfolioHolding.objects.none(),
+
+        empty_label="Select Stock",
+
+        widget=forms.Select(
+            attrs={
+                'class':'form-control'
+            }
+        )
     )
 
+    quantity=forms.IntegerField(
 
-# =========================
-# WITHDRAW FORM
-# =========================
-class WithdrawalForm(forms.Form):
-    amount = forms.DecimalField(
         min_value=1,
-        widget=forms.NumberInput(attrs={'class': 'form-control'})
+
+        widget=forms.NumberInput(
+            attrs={
+                'class':'form-control',
+                'placeholder':'Quantity to sell'
+            }
+        )
     )
 
+    def __init__(self,*args,**kwargs):
 
-# =========================
-# ISSUE FORM (like complaint system)
-# =========================
-class IssueForm(forms.ModelForm):
+        investor=kwargs.pop(
+            'investor',
+            None
+        )
 
-    class Meta:
-        model = TradeIssue
-        fields = ['issue_type', 'description']
-        widgets = {
-            'issue_type': forms.Select(attrs={'class': 'form-control'}),
-            'description': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 4
-            }),
-        }
+        super().__init__(
+            *args,
+            **kwargs
+        )
 
-    def generate_issue_id(self):
-        return "ISS" + ''.join(random.choices(string.digits, k=6))
+        if investor:
 
-    def save(self, commit=True):
-        instance = super().save(commit=False)
-        if not instance.issue_id:
-            instance.issue_id = self.generate_issue_id()
-        if commit:
-            instance.save()
-        return instance
-
-
-# =========================
-# ISSUE RESOLUTION FORM
-# =========================
-class IssueResolutionForm(forms.Form):
-    status = forms.ChoiceField(
-        choices=[
-            ('PENDING', 'PENDING'),
-            ('RESOLVED', 'RESOLVED'),
-            ('REJECTED', 'REJECTED'),
-        ],
-        widget=forms.Select(attrs={'class': 'form-control'})
-    )
-
-    comment = forms.CharField(
-        required=False,
-        widget=forms.Textarea(attrs={
-            'class': 'form-control',
-            'rows': 3
-        })
-    )
-
-
+            self.fields[
+                'stock'
+            ].queryset=PortfolioHolding.objects.filter(
+                investor=investor
+            )
 # =========================
 # PASSWORD RESET REQUEST
 # =========================
