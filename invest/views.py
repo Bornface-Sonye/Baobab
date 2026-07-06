@@ -356,7 +356,7 @@ class DashboardView(TemplateView):
         # TEMPORARY
         # until Investor links to System_User
 
-        investor=Investor.objects.get(username=username).first()
+        investor = get_object_or_404(Investor, username=username)
 
 
         if not investor:
@@ -374,9 +374,7 @@ class DashboardView(TemplateView):
 
         total_invested=Investment.objects.filter(
 
-            investor=investor,
-            status='ACTIVE'
-
+            investor=investor
         ).aggregate(
 
             Sum(
@@ -389,9 +387,7 @@ class DashboardView(TemplateView):
 
         total_loan=Loan.objects.filter(
 
-            borrower=investor,
-            status='ACTIVE'
-
+            borrower=investor
         ).aggregate(
 
             Sum(
@@ -458,7 +454,7 @@ class DashboardView(TemplateView):
 
         context={
 
-            'last_name': user.username,
+            'phone_number': investor.phone_number,
             'wallet': wallet,
             'total_invested': total_invested,
             'total_loan': total_loan,
@@ -589,6 +585,7 @@ class InvestorLendView(FormView):
             return redirect('login')
 
         investor = get_object_or_404(Investor, username=username)
+        form = InvestorLendForm
         liquidity=LiquidityPool.objects.first()
         wallet=Wallet.objects.get(
             investor=investor
@@ -646,12 +643,13 @@ class InvestorLendView(FormView):
             'duration_days': duration,
         })
 
-    def post(self, request, complaint_code):
+    def post(self, request):
         username = request.session.get('username')
         if not username:
             return redirect('login')
 
         investor = get_object_or_404(Investor, username=username)
+        form = InvestorLendForm
         liquidity=LiquidityPool.objects.first()
         wallet=Wallet.objects.get(
             investor=investor

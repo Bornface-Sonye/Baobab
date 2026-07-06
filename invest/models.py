@@ -34,7 +34,7 @@ class Investor(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.national_id_no
+        return self.username
 
 
 # ===========================================
