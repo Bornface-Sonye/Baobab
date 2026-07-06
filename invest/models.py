@@ -173,7 +173,7 @@ class Trade(models.Model):
     trade_type=models.CharField(max_length=20, choices=TYPES, help_text="Please Select Trade Type")
     quantity=models.IntegerField()
     price=models.DecimalField(max_digits=15, decimal_places=2, help_text="Please Enter Trade Price")
-    created_at=models.DateTimeField(auto_now_add=True)
+    timestamp=models.DateTimeField(auto_now_add=True)
 
 
 # =======================================================================================================
@@ -216,11 +216,11 @@ class System_User(models.Model):
 class PasswordResetToken(models.Model):
     username = models.ForeignKey(System_User, on_delete=models.CASCADE)
     token = models.CharField(max_length=32)
-    created_at = models.DateTimeField(auto_now_add=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"Token for {self.username}"
 
     def is_expired(self):
-        expiration_time = self.created_at + timedelta(minutes=5)
+        expiration_time = self.timestamp + timedelta(minutes=5)
         return timezone.now() > expiration_time

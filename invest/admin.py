@@ -1,8 +1,8 @@
 from django.contrib import admin
 from .models import (
-    Investor, Asset, AssetCategory,
-    PortfolioHolding, Trade,
-    WalletTransaction, TradeIssue, TradeResolution
+    Investor, Wallet, LiquidityPool,
+    Investment, Loan, Stock, PortfolioHolding, Trade,
+    InterestHistory, System_User, PasswordResetToken
 )
 
 # =========================
@@ -10,68 +10,97 @@ from .models import (
 # =========================
 @admin.register(Investor)
 class InvestorAdmin(admin.ModelAdmin):
-    list_display = ('username', 'email_address', 'cash_balance')
-    search_fields = ('username', 'email_address')
+    list_display = ('national_id_no', 'first_name', 'last_name')
+    search_fields = ('national_id_no', 'phone_number')
 
 
 # =========================
-# ASSET ADMIN (STOCKS / CRYPTO / FUNDS)
+# WALLET
 # =========================
-@admin.register(Asset)
-class AssetAdmin(admin.ModelAdmin):
-    list_display = ('name', 'current_price', 'category')
-    list_filter = ('category',)
-    search_fields = ('name', 'category')
-
-
-@admin.register(AssetCategory)
-class AssetCategoryAdmin(admin.ModelAdmin):
-    list_display = ('name',)
-    search_fields = ('name',)
-
+@admin.register(Wallet)
+class WalletAdmin(admin.ModelAdmin):
+    list_display = ('investor', 'available_balance', 'locked_balance')
+    list_filter = ('locked_balance',)
+    search_fields = ('investor', 'available_balance', 'locked_balance')
 
 # =========================
-# PORTFOLIO HOLDINGS
+# LIQUIDITY POOL
+# =========================
+@admin.register(LiquidityPool)
+class LiquidityPoolAdmin(admin.ModelAdmin):
+    list_display = ('total_available',)
+    search_fields = ('total_available',)
+
+
+# =========================
+# INVESTMENT
+# =========================
+@admin.register(Investment)
+class InvestmentAdmin(admin.ModelAdmin):
+    list_display = ('investor', 'amount', 'interest_rate', 'status')
+    list_filter = ('status',)
+    search_fields = ('investor', 'amount', 'interest_rate', 'status')
+
+# =========================
+# LOAN
+# =========================
+@admin.register(Loan)
+class LoanAdmin(admin.ModelAdmin):
+    list_display = ('borrower', 'principal', 'interest_rate', 'status')
+    list_filter = ('status',)
+    search_fields = ('borrower', 'principal', 'interest_rate', 'status')
+    
+    
+# =========================
+# STOCK
+# =========================
+@admin.register(Stock)
+class StockAdmin(admin.ModelAdmin):
+    list_display = ('stock_code', 'stock_name', 'shares', 'current_price')
+    list_filter = ('shares',)
+    search_fields = ('stock_code', 'stock_name')
+  
+# =========================
+# STOCK
 # =========================
 @admin.register(PortfolioHolding)
 class PortfolioHoldingAdmin(admin.ModelAdmin):
-    list_display = ('investor', 'asset', 'quantity', 'average_buy_price')
-    list_filter = ('asset',)
-    search_fields = ('investor__username', 'asset__name')
-
+    list_display = ('investor', 'stock', 'quantity', 'average_buy_price', 'fund_source')
+    list_filter = ('investor', 'stock')
+    search_fields = ('investor', 'stock')  
 
 # =========================
 # TRADE SYSTEM (BUY / SELL)
 # =========================
 @admin.register(Trade)
 class TradeAdmin(admin.ModelAdmin):
-    list_display = ('investor', 'asset', 'trade_type', 'quantity', 'price', 'timestamp')
-    list_filter = ('trade_type', 'asset')
-    search_fields = ('investor__username', 'asset__name')
+    list_display = ('investor', 'stock', 'trade_type', 'quantity', 'price', 'timestamp')
+    list_filter = ('investor', 'stock')
+    search_fields = ('investor', 'stock')
 
 
 # =========================
-# WALLET TRANSACTIONS
+# INTEREST HISTORY
 # =========================
-@admin.register(WalletTransaction)
-class WalletTransactionAdmin(admin.ModelAdmin):
-    list_display = ('investor', 'amount', 'transaction_type', 'created_at')
-    list_filter = ('transaction_type',)
-    search_fields = ('investor__username',)
+@admin.register(InterestHistory)
+class InterestHistoryAdmin(admin.ModelAdmin):
+    list_display = ('interest_rate', 'liquidity', 'timestamp')
+    list_filter = ('interest_rate', 'liquidity')
+    search_fields = ('interest_rate', 'liquidity')
 
 
 # =========================
-# SUPPORT / ISSUES
+# SYSTEM USER
 # =========================
-@admin.register(TradeIssue)
-class TradeIssueAdmin(admin.ModelAdmin):
-    list_display = ('issue_id', 'investor', 'issue_type')
-    list_filter = ('investor', 'issue_type')
-    search_fields = ('issue_id', 'investor__username')
+@admin.register(System_User)
+class System_UserAdmin(admin.ModelAdmin):
+    list_display = ('username',)
+    list_filter = ('username',)
+    search_fields = ('username',)
 
 
-@admin.register(TradeResolution)
-class TradeResolutionAdmin(admin.ModelAdmin):
-    list_display = ('issue', 'resolver', 'resolved_at')
-    list_filter = ('resolver',)
-    search_fields = ('issue__issue_id',)
+@admin.register(PasswordResetToken)
+class PasswordResetTokenAdmin(admin.ModelAdmin):
+    list_display = ('username', 'token', 'timestamp')
+    list_filter = ('username',)
+    search_fields = ('username',)
