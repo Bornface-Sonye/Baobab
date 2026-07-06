@@ -15,6 +15,20 @@ urlpatterns = [
     # DASHBOARD
     # =========================
     path('dashboard/', views.DashboardView.as_view(), name='dashboard'),
+    
+    # =========================
+    # INVESTMENT
+    # =========================
+    path('lend/', views.InvestorLendView.as_view(), name='lend-money'),
+    path('borrow/', views.InvestorBorrowView.as_view(), name='borrow-money'),
+    
+    # =========================
+    # STOCK
+    # =========================
+    path('buy/', views.BuyStockView.as_view(), name='buy-stock'),
+    path('sell/', views.SellStockView.as_view(), name='sell-stock'),
+
+
 
 ]
 
