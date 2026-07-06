@@ -3,13 +3,100 @@
 
 {% block content %}
 
+<style>
+
+    body{
+    
+    margin:0;
+    padding:0;
+    font-family:Arial;
+    background:#f4f6f9;
+    
+    }
+    
+    .container{
+    
+    width:500px;
+    margin:auto;
+    margin-top:50px;
+    background:white;
+    padding:30px;
+    border-radius:10px;
+    box-shadow:0px 0px 15px rgba(0,0,0,.2);
+    
+    }
+    
+    h2{
+    
+    text-align:center;
+    color:#1e3a8a;
+    
+    }
+    
+    .info{
+    
+    background:#edf4ff;
+    padding:15px;
+    border-radius:10px;
+    margin-bottom:20px;
+    
+    }
+    
+    .form-control{
+    
+    width:100%;
+    padding:12px;
+    margin-top:10px;
+    margin-bottom:15px;
+    border:1px solid #ccc;
+    border-radius:5px;
+    box-sizing:border-box;
+    
+    }
+    
+    button{
+    
+    width:100%;
+    padding:12px;
+    border:none;
+    background:#dc3545;
+    color:white;
+    border-radius:5px;
+    font-size:16px;
+    cursor:pointer;
+    
+    }
+    
+    button:hover{
+    
+    background:#bb2d3b;
+    
+    }
+    
+    .success{
+    
+    padding:10px;
+    background:#d1e7dd;
+    margin-bottom:15px;
+    border-radius:5px;
+    
+    }
+    
+    .error{
+    
+    padding:10px;
+    background:#f8d7da;
+    margin-bottom:15px;
+    border-radius:5px;
+    
+    }
+    
+    </style>
 <div class="lend-container">
 
     <div class="card">
 
-        <h2>
-            Lend Money
-        </h2>
+        <h2 style="text-align: center; margin-bottom: 20px;">Lend Money</h2>
 
         <p class="description">
 
@@ -33,8 +120,7 @@
         {% endif %}
 
 
-        <form method="POST">
-
+        <form method="post" style="max-width: 600px; margin: auto; background: #f9f9f9; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
             {% csrf_token %}
 
             <div class="field">
@@ -57,13 +143,11 @@
 
             </div>
 
-            <button
-                class="submit-btn"
-                type="submit">
-
-                Invest Money
-
-            </button>
+            <div style="text-align: center; margin-top: 20px;">
+                <button type="submit" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                    Invest Money
+                </button>
+            </div>
 
         </form>
 

@@ -1,10 +1,9 @@
-<!DOCTYPE html>
+{% extends 'base_dashboard.html' %}
+{% load static %}
 
-<html>
+{% block content %}
 
-<head>
-
-<title>Buy Stocks</title>
+<h2 style="text-align: center; margin-bottom: 20px;">Buy Stock</h2>
 
 <style>
 
@@ -151,22 +150,17 @@ Ksh {{wallet.available_balance}}
 {% endif %}
 
 
-<form method="POST">
-
-{% csrf_token %}
+<form method="post" style="max-width: 600px; margin: auto; background: #f9f9f9; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+    {% csrf_token %}
 
 {{form.as_p}}
 
-<button type="submit">
-
-Buy Stock
-
-</button>
+<div style="text-align: center; margin-top: 20px;">
+    <button type="submit" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
+        Buy Stock
+    </button>
+</div>
 
 </form>
 
-</div>
-
-</body>
-
-</html>
+{% endblock %}
