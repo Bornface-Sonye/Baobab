@@ -455,6 +455,7 @@ class DashboardView(TemplateView):
         context={
 
             'phone_number': investor.phone_number,
+            'investor': investor,
             'wallet': wallet,
             'total_invested': total_invested,
             'total_loan': total_loan,

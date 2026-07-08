@@ -1,4 +1,4 @@
-{% extends 'cod_base_dashboard.html' %}
+{% extends 'base_dashboard.html' %}
 
 {% block content %}
 <style>
@@ -48,36 +48,16 @@
             <!-- Sidebar Card -->
             <div class="sidebar-card">
                 <div class="sidebar-header">
-                    <p class="stat-item">Phone Number: {{ phone_number }}</p>
+                    <p class="stat-item">{{ phone_number }}</p>
+                    <p class="stat-item"><i>KES {{wallet.available_balance}}</i></p>
                 </div>
             </div>
             <div class="sidebar-card">
-                <div class="sidebar-header">
-                    Welcome  Back !!!
-                </div>
-                <div class="sidebar-header">
-                    Welcome, {{ last_name }}
-                </div>
                 <p class="stat-item">Wallet Balance: <i>KES {{wallet.available_balance}}</i></p>
                 <p class="stat-item">Investment Balance: <i>KES {{total_invested}}</i></p>
                 <p class="stat-item">Borrowed Balance: <i>KES {{wallet.borrowed_balance}}</i></p>
             </div>
         </div>
-
-        <div class="col-lg-9">
-            <!-- Main content area -->
-            <div class="card">
-                <div class="sidebar-card">
-                    <div class="sidebar-header">
-                        Welcome  Back !!!
-                    </div>
-                    <div class="sidebar-header">
-                        Welcome, {{ last_name }}
-                    </div>
-                    <p class="stat-item">Wallet Balance: <i>KES {{wallet.available_balance}}</i></p>
-                    <p class="stat-item">Investment Balance: <i>KES {{total_invested}}</i></p>
-                    <p class="stat-item">Borrowed Balance: <i>KES {{wallet.borrowed_balance}}</i></p>
-                </div>
 
                 <!-- ========================= -->
                 <!-- INTEREST GRAPH -->
