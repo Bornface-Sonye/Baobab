@@ -5,151 +5,274 @@
 
 <style>
 
-    body{
-    
+body{
     margin:0;
-    padding:0;
-    font-family:Arial;
-    background:#f4f6f9;
-    
-    }
-    
-    .container{
-    
-    width:500px;
-    margin:auto;
-    margin-top:50px;
-    background:white;
     padding:30px;
-    border-radius:10px;
-    box-shadow:0px 0px 15px rgba(0,0,0,.2);
-    
-    }
-    
-    h2{
-    
+    background:#f4f6f9;
+    font-family:Arial, Helvetica, sans-serif;
+}
+
+.lend-container{
+    max-width:700px;
+    margin:auto;
+}
+
+.card{
+    background:#ffffff;
+    border-radius:12px;
+    padding:35px;
+    box-shadow:0 8px 20px rgba(0,0,0,.12);
+}
+
+.card h2{
     text-align:center;
     color:#1e3a8a;
-    
-    }
-    
-    .info{
-    
-    background:#edf4ff;
-    padding:15px;
-    border-radius:10px;
+    margin-bottom:10px;
+}
+
+.description{
+    text-align:center;
+    color:#666;
+    margin-bottom:30px;
+    font-size:15px;
+}
+
+.info{
+    background:#eef5ff;
+    border-left:5px solid #2563eb;
+    padding:18px;
+    border-radius:8px;
+    margin-bottom:25px;
+}
+
+.info p{
+    margin:8px 0;
+    color:#333;
+}
+
+.field{
     margin-bottom:20px;
-    
-    }
-    
-    .form-control{
-    
+}
+
+.field label{
+    display:block;
+    font-weight:bold;
+    margin-bottom:8px;
+    color:#444;
+}
+
+.form-control{
     width:100%;
     padding:12px;
-    margin-top:10px;
-    margin-bottom:15px;
-    border:1px solid #ccc;
-    border-radius:5px;
+    border:1px solid #d1d5db;
+    border-radius:8px;
+    font-size:15px;
     box-sizing:border-box;
-    
-    }
-    
-    button{
-    
+    transition:.3s;
+}
+
+.form-control:focus{
+    outline:none;
+    border-color:#2563eb;
+    box-shadow:0 0 5px rgba(37,99,235,.3);
+}
+
+button{
     width:100%;
-    padding:12px;
-    border:none;
-    background:#dc3545;
+    padding:14px;
+    background:#16a34a;
     color:white;
-    border-radius:5px;
-    font-size:16px;
+    border:none;
+    border-radius:8px;
     cursor:pointer;
-    
+    font-size:16px;
+    font-weight:bold;
+    transition:.3s;
+}
+
+button:hover{
+    background:#15803d;
+}
+
+.success{
+    background:#d1fae5;
+    color:#065f46;
+    padding:15px;
+    margin-bottom:20px;
+    border-radius:8px;
+    border-left:5px solid #10b981;
+}
+
+.error{
+    background:#fee2e2;
+    color:#991b1b;
+    padding:15px;
+    margin-bottom:20px;
+    border-radius:8px;
+    border-left:5px solid #ef4444;
+}
+
+.field-error{
+    color:#dc2626;
+    font-size:13px;
+    margin-top:5px;
+}
+
+.summary{
+    margin-top:25px;
+    background:#f8fafc;
+    border-radius:8px;
+    padding:18px;
+}
+
+.summary h3{
+    margin-top:0;
+    color:#1e3a8a;
+}
+
+.summary ul{
+    margin:0;
+    padding-left:20px;
+}
+
+.summary li{
+    margin-bottom:8px;
+}
+
+@media(max-width:768px){
+
+    body{
+        padding:15px;
     }
-    
-    button:hover{
-    
-    background:#bb2d3b;
-    
+
+    .card{
+        padding:20px;
     }
-    
-    .success{
-    
-    padding:10px;
-    background:#d1e7dd;
-    margin-bottom:15px;
-    border-radius:5px;
-    
-    }
-    
-    .error{
-    
-    padding:10px;
-    background:#f8d7da;
-    margin-bottom:15px;
-    border-radius:5px;
-    
-    }
-    
-    </style>
+
+}
+
+</style>
+
 <div class="lend-container">
 
     <div class="card">
 
-        <h2 style="text-align: center; margin-bottom: 20px;">Lend Money</h2>
+        <h2>Invest / Lend Money</h2>
 
         <p class="description">
-
-            Invest money and earn interest
-            after maturity.
-
+            Invest your funds into the liquidity pool and earn interest compounded daily.
         </p>
+
+        <div class="info">
+
+            <p>
+                <strong>Available Wallet Balance:</strong>
+                KSh {{ wallet.available_balance|floatformat:2 }}
+            </p>
+
+            <p>
+                <strong>Current Annual Interest Rate:</strong>
+                {{ interest_rate }}%
+            </p>
+
+            <p>
+                <strong>Interest Calculation:</strong>
+                Daily Compound Interest
+            </p>
+
+        </div>
 
         {% if messages %}
 
             {% for message in messages %}
 
-            <div class="message">
-
-                {{message}}
-
-            </div>
+                <div class="{% if message.tags == 'success' %}success{% else %}error{% endif %}">
+                    {{ message }}
+                </div>
 
             {% endfor %}
 
         {% endif %}
 
+        <form method="POST">
 
-        <form method="post" style="max-width: 600px; margin: auto; background: #f9f9f9; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
             {% csrf_token %}
 
             <div class="field">
 
-                <label>
-                    Amount
+                <label for="{{ form.amount.id_for_label }}">
+                    Amount to Invest (KSh)
                 </label>
 
-                {{form.amount}}
+                {{ form.amount }}
+
+                {% if form.amount.errors %}
+
+                    <div class="field-error">
+
+                        {{ form.amount.errors }}
+
+                    </div>
+
+                {% endif %}
 
             </div>
 
             <div class="field">
 
-                <label>
-                    Duration (Days)
+                <label for="{{ form.duration_days.id_for_label }}">
+                    Investment Duration (Days)
                 </label>
 
-                {{form.duration_days}}
+                {{ form.duration_days }}
+
+                {% if form.duration_days.errors %}
+
+                    <div class="field-error">
+
+                        {{ form.duration_days.errors }}
+
+                    </div>
+
+                {% endif %}
 
             </div>
 
-            <div style="text-align: center; margin-top: 20px;">
-                <button type="submit" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                    Invest Money
-                </button>
-            </div>
+            {% if form.non_field_errors %}
+
+                <div class="error">
+
+                    {{ form.non_field_errors }}
+
+                </div>
+
+            {% endif %}
+
+            <button type="submit">
+                Invest Money
+            </button>
 
         </form>
+
+        <div class="summary">
+
+            <h3>Investment Summary</h3>
+
+            <ul>
+
+                <li>✔ Interest rate is retrieved automatically from the latest interest history.</li>
+
+                <li>✔ Interest is compounded daily using the annual interest rate.</li>
+
+                <li>✔ The invested amount is transferred from your available wallet balance to your locked balance.</li>
+
+                <li>✔ The accrued amount is calculated automatically and stored in your investment record.</li>
+
+                <li>✔ Your investment begins immediately after successful submission.</li>
+
+            </ul>
+
+        </div>
 
     </div>
 

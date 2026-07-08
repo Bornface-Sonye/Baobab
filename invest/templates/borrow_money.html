@@ -6,155 +6,287 @@
 <style>
 
 body{
-
-margin:0;
-padding:0;
-font-family:Arial,sans-serif;
-background:#f5f7fa;
-
+    margin:0;
+    padding:25px;
+    background:#f4f6f9;
+    font-family:Arial, Helvetica, sans-serif;
 }
 
-.container{
-
-width:500px;
-margin:auto;
-margin-top:50px;
-background:white;
-padding:30px;
-border-radius:10px;
-box-shadow:0px 0px 10px rgba(0,0,0,0.2);
-
-}
-
-.heading{
-
-text-align:center;
-color:#1d3557;
-margin-bottom:25px;
-
+.borrow-container{
+    max-width:700px;
+    margin:auto;
 }
 
 .card{
-
-background:#eef6ff;
-padding:15px;
-border-radius:8px;
-margin-bottom:20px;
-
+    background:#ffffff;
+    padding:35px;
+    border-radius:12px;
+    box-shadow:0 8px 20px rgba(0,0,0,.12);
 }
 
-.card p{
+.card h2{
+    text-align:center;
+    color:#1e3a8a;
+    margin-bottom:10px;
+}
 
-margin:10px 0;
+.description{
+    text-align:center;
+    color:#666;
+    margin-bottom:25px;
+}
 
+.info{
+    background:#eef5ff;
+    border-left:5px solid #2563eb;
+    border-radius:8px;
+    padding:18px;
+    margin-bottom:25px;
+}
+
+.info p{
+    margin:8px 0;
+    color:#333;
+}
+
+.field{
+    margin-bottom:20px;
+}
+
+.field label{
+    display:block;
+    margin-bottom:8px;
+    font-weight:bold;
+    color:#444;
 }
 
 .form-control{
+    width:100%;
+    padding:12px;
+    border:1px solid #ced4da;
+    border-radius:8px;
+    font-size:15px;
+    box-sizing:border-box;
+    transition:.3s;
+}
 
-width:100%;
-padding:12px;
-margin-bottom:15px;
-border:1px solid #ccc;
-border-radius:5px;
-box-sizing:border-box;
-
+.form-control:focus{
+    outline:none;
+    border-color:#2563eb;
+    box-shadow:0 0 5px rgba(37,99,235,.3);
 }
 
 .submit-btn{
-
-width:100%;
-padding:12px;
-border:none;
-background:#0d6efd;
-color:white;
-font-size:16px;
-border-radius:5px;
-cursor:pointer;
-
+    width:100%;
+    padding:14px;
+    background:#0d6efd;
+    color:white;
+    border:none;
+    border-radius:8px;
+    font-size:16px;
+    font-weight:bold;
+    cursor:pointer;
+    transition:.3s;
 }
 
 .submit-btn:hover{
-
-background:#084298;
-
+    background:#0b5ed7;
 }
 
-.message{
-
-padding:10px;
-margin-bottom:15px;
-border-radius:5px;
-background:#d1e7dd;
-
+.success{
+    background:#d1e7dd;
+    color:#0f5132;
+    padding:15px;
+    border-radius:8px;
+    margin-bottom:20px;
+    border-left:5px solid #198754;
 }
 
-.errorlist{
+.error{
+    background:#f8d7da;
+    color:#842029;
+    padding:15px;
+    border-radius:8px;
+    margin-bottom:20px;
+    border-left:5px solid #dc3545;
+}
 
-color:red;
-list-style:none;
-padding:0;
+.field-error{
+    color:#dc3545;
+    font-size:13px;
+    margin-top:5px;
+}
+
+.summary{
+    margin-top:30px;
+    background:#f8fafc;
+    border-radius:8px;
+    padding:18px;
+}
+
+.summary h3{
+    margin-top:0;
+    color:#1e3a8a;
+}
+
+.summary ul{
+    padding-left:20px;
+}
+
+.summary li{
+    margin-bottom:10px;
+}
+
+@media(max-width:768px){
+
+    body{
+        padding:15px;
+    }
+
+    .card{
+        padding:20px;
+    }
 
 }
 
 </style>
 
-<div class="lend-container">
+<div class="borrow-container">
 
     <div class="card">
 
-        <h2 style="text-align: center; margin-bottom: 20px;">Borrow Money</h2>
+        <h2>Borrow Money</h2>
 
         <p class="description">
-
-            Borrow Money and Invest Later.
-
+            Borrow money from the liquidity pool. Interest is compounded daily and the interest amount is locked as collateral.
         </p>
+
+        <div class="info">
+
+            <p>
+                <strong>Wallet Available Balance:</strong>
+                KSh {{ wallet.available_balance|floatformat:2 }}
+            </p>
+
+            <p>
+                <strong>Locked Balance:</strong>
+                KSh {{ wallet.locked_balance|floatformat:2 }}
+            </p>
+
+            <p>
+                <strong>Borrowed Balance:</strong>
+                KSh {{ wallet.borrowed_balance|floatformat:2 }}
+            </p>
+
+            <p>
+                <strong>Current Annual Interest Rate:</strong>
+                {{ interest_rate }}%
+            </p>
+
+            <p>
+                <strong>Interest Calculation:</strong>
+                Daily Compound Interest
+            </p>
+
+        </div>
 
         {% if messages %}
 
             {% for message in messages %}
 
-            <div class="message">
+                <div class="{% if message.tags == 'success' %}success{% else %}error{% endif %}">
 
-                {{message}}
+                    {{ message }}
 
-            </div>
+                </div>
 
             {% endfor %}
 
         {% endif %}
 
+        <form method="post">
 
-        <form method="post" style="max-width: 600px; margin: auto; background: #f9f9f9; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
             {% csrf_token %}
 
+            {% if form.non_field_errors %}
+
+                <div class="error">
+
+                    {{ form.non_field_errors }}
+
+                </div>
+
+            {% endif %}
+
             <div class="field">
 
-                <label><b>
-                    Amount:
-                </label></b>
-
-                {{form.amount}}
-
-            </div>
-
-            <div class="field">
-
-                <label>
-                    Duration (Days)
+                <label for="{{ form.principal.id_for_label }}">
+                    Amount to Borrow (KSh)
                 </label>
 
-                {{form.duration_days}}
+                {{ form.principal }}
+
+                {% if form.principal.errors %}
+
+                    <div class="field-error">
+
+                        {{ form.principal.errors }}
+
+                    </div>
+
+                {% endif %}
 
             </div>
 
-            <div style="text-align: center; margin-top: 20px;">
-                <button type="submit" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                    Borrow Money
-                </button>
+            <div class="field">
+
+                <label for="{{ form.duration_days.id_for_label }}">
+                    Loan Duration (Days)
+                </label>
+
+                {{ form.duration_days }}
+
+                {% if form.duration_days.errors %}
+
+                    <div class="field-error">
+
+                        {{ form.duration_days.errors }}
+
+                    </div>
+
+                {% endif %}
+
             </div>
+
+            <button type="submit" class="submit-btn">
+
+                Borrow Money
+
+            </button>
 
         </form>
+
+        <div class="summary">
+
+            <h3>Borrowing Information</h3>
+
+            <ul>
+
+                <li>The interest rate is automatically retrieved from the latest interest history.</li>
+
+                <li>Interest is calculated using daily compound interest.</li>
+
+                <li>The calculated interest amount is used as collateral and is moved from your available balance to your locked balance.</li>
+
+                <li>The borrowed amount is added to both your available balance and your borrowed balance.</li>
+
+                <li>Your locked balance cannot be withdrawn until the loan has been repaid.</li>
+
+                <li>The borrowed funds can be invested immediately, but repayment is required on or before the due date.</li>
+
+            </ul>
+
+        </div>
 
     </div>
 

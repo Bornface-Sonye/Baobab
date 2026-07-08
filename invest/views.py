@@ -7,7 +7,6 @@ from django.conf import settings
 from django.core.mail import send_mail
 
 from django.views.generic import ListView, FormView, DeleteView
-from django.contrib import messages
 from django.db import transaction
 from django.utils import timezone
 from django.urls import reverse_lazy
@@ -15,9 +14,10 @@ from django.core.exceptions import ValidationError
 import random, string
 import re
 
-
+from .utils import *
 from decimal import Decimal
 from django.contrib import messages
+from decimal import Decimal, ROUND_HALF_UP
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
@@ -222,103 +222,46 @@ class DashboardView(View):
 
 
 # ====================================================
-# TEMPORARY INTEREST RATE ENGINE
+# INTEREST RATE ENGINE
 # Updates every 10 seconds
 # ====================================================
 
-def update_interest_rate():
 
-    liquidity = LiquidityPool.objects.first()
+class InterestRateEngineView(View):
 
-    if not liquidity:
+    def get(self, request):
+        liquidity = get_object_or_404(LiquidityPool).first()
 
-        liquidity = LiquidityPool.objects.create(
-            total_available=1000000,
-            current_interest_rate=10
-        )
+    def post(self, form):
+        
+        # Fetch GroupMember related to the borrower's national_id
+        liquidity = get_object_or_404(LiquidityPool).first()
+        total_available = liquidity.total_available
+        total_borrowed = liquidity.total_borrowed
+        total_invested = liquidity.total_invested
+        total_collateral = liquidity.total_collateral
+        current_interest_rate = liquidity.current_interest_rate
+        
+            
+        # Test MachineLearningModel class
+        ml_model = MachineLearningModel() 
+        mse, r2 = ml_model.accuracy()
+        loan_proposal = InterestRate()
+        loan_proposal.data_retrieval('Mary', total_available, total_borrowed, total_invested, total_collateral, current_interest_rate)
+        prediction_result = loan_proposal.data_preparation()
+        result = float(f"{float(prediction_result):.2f}")
+        
+        
+        return render(self.request, self.template_name, {
+            'success_message': f'Interest Update successful. Show Deviation on Dashboard Graph'
+        })
 
-
-    latest = InterestHistory.objects.order_by(
-        '-timestamp'
-    ).first()
-
-
-    now = timezone.now()
-
-
-    if latest:
-
-        elapsed = (
-            now - latest.timestamp
-        ).total_seconds()
-
-
-        if elapsed < 10:
-            return
-
-
-    current_rate = float(
-        liquidity.current_interest_rate
-    )
-
-
-    liquidity_amount = float(
-        liquidity.total_available
-    )
-
-
-    # smooth movement
-
-    if liquidity_amount < 1000000:
-
-        movement=.25
-
-    elif liquidity_amount>3000000:
-
-        movement=-.20
-
-    else:
-
-        movement=.05
-
-
-    noise=random.uniform(
-        -.10,
-        .10
-    )
-
-
-    new_rate=round(
-        current_rate+
-        movement+
-        noise,
-        2
-    )
-
-
-    new_rate=max(
-        5,
-        min(
-            new_rate,
-            20
-        )
-    )
-
-
-    liquidity.current_interest_rate=new_rate
-
-    liquidity.save()
-
-
-    InterestHistory.objects.create(
-
-        interest_rate=new_rate,
-
-        liquidity=liquidity.total_available
-
-    )
-
-
+    def form_invalid(self, form):
+        print(form.errors)  # Print form errors to console or log them for debugging
+        return render(self.request, self.template_name, {
+            'form': form,
+            'error_message': f'Form Invalid. Errors: {form.errors}',
+        })
 # ====================================================
 # DASHBOARD
 # ====================================================
@@ -429,9 +372,6 @@ class DashboardView(TemplateView):
         liquidity=LiquidityPool.objects.first()
 
 
-        update_interest_rate()
-
-
         graph=InterestHistory.objects.filter(
 
             timestamp__gte=
@@ -515,7 +455,7 @@ class DashboardView(TemplateView):
 
 def dashboard_graph_data(request):
 
-    update_interest_rate()
+
     graph=InterestHistory.objects.filter(
 
         timestamp__gte=
@@ -578,359 +518,329 @@ def dashboard_graph_data(request):
 
     })    
 
-class InvestorLendView(FormView):
+
+
+def calculate_daily_compound(principal, annual_rate, days):
+    """
+    annual_rate is a percentage e.g. 12 means 12%
+    days is investment duration.
+    """
+
+    principal = Decimal(principal)
+    annual_rate = Decimal(annual_rate)
+
+    daily_rate = (annual_rate / Decimal("100")) / Decimal("365")
+
+    accrued = principal * ((Decimal("1") + daily_rate) ** days)
+
+    return accrued.quantize(
+        Decimal("0.01"),
+        rounding=ROUND_HALF_UP
+    )
     
-    def get(self, request):
-        username = request.session.get('username')
-        if not username:
-            return redirect('login')
 
-        investor = get_object_or_404(Investor, username=username)
-        form = InvestorLendForm
-        liquidity=LiquidityPool.objects.first()
-        wallet=Wallet.objects.get(
+class InvestorLendView(FormView):
+
+    template_name = "lend_money.html"
+    form_class = InvestorLendForm
+
+    def dispatch(self, request, *args, **kwargs):
+
+        if not request.session.get("username"):
+            return redirect("login")
+
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_investor(self):
+
+        return get_object_or_404(
+            Investor,
+            username=self.request.session["username"]
+        )
+
+    def get_context_data(self, **kwargs):
+
+        context = super().get_context_data(**kwargs)
+
+        investor = self.get_investor()
+
+        context["wallet"] = Wallet.objects.get(
             investor=investor
         )
-        
-        amount=form.cleaned_data[
-            'amount'
-        ]
 
-        duration=form.cleaned_data[
-            'duration_days'
-        ]
-        
-        if wallet.available_balance<amount:
+        latest_interest = InterestHistory.objects.first()
+
+        if latest_interest:
+            context["interest_rate"] = latest_interest.interest_rate
+        else:
+            context["interest_rate"] = Decimal("0.00")
+
+        return context
+
+    @transaction.atomic
+    def form_valid(self, form):
+
+        investor = self.get_investor()
+
+        wallet = Wallet.objects.select_for_update().get(
+            investor=investor
+        )
+
+        liquidity = LiquidityPool.objects.select_for_update().first()
+
+        interest_record = InterestHistory.objects.first()
+
+        if interest_record is None:
 
             messages.error(
                 self.request,
-                "Insufficient wallet balance"
+                "No interest rate available."
             )
 
-            return redirect(
-                'lend_money'
-            )
-            
-        interest=liquidity.current_interest_rate
+            return redirect("lend-money")
 
+        annual_rate = interest_record.interest_rate
 
-        expected_return=amount + (
-            amount *
-            Decimal(
-                interest/100
-            )
-        )
+        amount = form.cleaned_data["amount"]
 
+        duration = form.cleaned_data["duration_days"]
 
-        wallet.available_balance-=amount
-
-        wallet.locked_balance+=amount
-
-        wallet.save()
-
-
-        liquidity.total_available+=amount
-        liquidity.total_invested+=amount
-
-        liquidity.save()
-
-
-        # Pass the necessary information to the template
-        form = InvestorLendForm()
-
-        return render(request, 'lend_money.html', {
-            'form': form,
-            'amount': amount,
-            'duration_days': duration,
-        })
-
-    def post(self, request):
-        username = request.session.get('username')
-        if not username:
-            return redirect('login')
-
-        investor = get_object_or_404(Investor, username=username)
-        form = InvestorLendForm
-        liquidity=LiquidityPool.objects.first()
-        wallet=Wallet.objects.get(
-            investor=investor
-        )
-        
-        amount=form.cleaned_data[
-            'amount'
-        ]
-
-        duration=form.cleaned_data[
-            'duration_days'
-        ]
-        
-        if wallet.available_balance<amount:
+        if wallet.available_balance < amount:
 
             messages.error(
                 self.request,
-                "Insufficient wallet balance"
+                "Insufficient wallet balance."
             )
 
-            return redirect(
-                'lend_money'
-            )
-            
-        interest=liquidity.current_interest_rate
+            return redirect("lend-money")
 
-
-        expected_return=amount + (
-            amount *
-            Decimal(
-                interest/100
-            )
+        amount_accrued = calculate_daily_compound(
+            amount,
+            annual_rate,
+            duration
         )
 
-
-        wallet.available_balance-=amount
-
-        wallet.locked_balance+=amount
-
+        wallet.available_balance -= amount
+        wallet.locked_balance += amount
+        wallet.invested_amount += amount
         wallet.save()
 
-
-        liquidity.total_available+=amount
-        liquidity.total_invested+=amount
-
+        liquidity.total_available += amount
+        liquidity.total_invested += amount
         liquidity.save()
-        form = InvestorLendForm(request.POST)
 
-        if form.is_valid():
-            Investment.objects.create(
+        Investment.objects.create(
 
             investor=investor,
 
             amount=amount,
 
-            interest_rate=interest,
+            interest_rate=annual_rate,
 
             duration_days=duration,
 
-            expected_return=expected_return,
-
-            end_date=timezone.now()+timezone.timedelta(
-                days=duration
-            )
+            amount_accrued=amount_accrued
         )
-            messages.success(
+
+        messages.success(
 
             self.request,
 
-            f"Investment successful at {interest}% interest"
+            f"Your investment of KSh {amount:,.2f} has been created successfully. "
+            f"It will grow to KSh {amount_accrued:,.2f} after {duration} days."
 
         )
-            messages.success(request, "Lecturer successfully assigned to the complaint.")
-            return redirect('cod-complaints')
-           
 
-        return render(request, 'lend_money.html', {
-            'form': form,
-        })
+        return redirect("lend-money")
 
+from decimal import Decimal
+from datetime import timedelta
+
+from django.contrib import messages
+from django.db import transaction
+from django.shortcuts import get_object_or_404, redirect
+from django.utils import timezone
+from django.views.generic.edit import FormView
 
 class InvestorBorrowView(FormView):
-    
-    def get(self, request):
-        username = request.session.get('username')
-        if not username:
-            return redirect('login')
 
-        form = BorrowForm(
-            request.POST,
-            interest_rate=interest_rate
+    template_name = "borrow_money.html"
+    form_class = BorrowForm
+
+    def dispatch(self, request, *args, **kwargs):
+
+        if not request.session.get("username"):
+            return redirect("login")
+
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_investor(self):
+
+        return get_object_or_404(
+            Investor,
+            username=self.request.session["username"]
         )
-        template_name = 'borrow_money.html'
-        investor = get_object_or_404(Investor, username=username)
-        wallet=Wallet.objects.get(
+
+    def get_context_data(self, **kwargs):
+
+        context = super().get_context_data(**kwargs)
+
+        investor = self.get_investor()
+
+        wallet = Wallet.objects.get(
             investor=investor
         )
 
         liquidity = LiquidityPool.objects.first()
 
-        interest_rate = liquidity.current_interest_rate
-        amount=form.cleaned_data['amount']
-        duration=form.cleaned_data['duration_days']
-        
-        if wallet.available_balance<amount:
+        interest_history = InterestHistory.objects.first()
 
-            messages.error(
-                self.request,
-                "Insufficient wallet balance"
-            )
+        context["wallet"] = wallet
+        context["liquidity"] = liquidity
 
-            return redirect(
-                self.template_name
-            )
-
-
-        expected_return=amount + (
-            amount *
-            Decimal(
-                interest_rate/100
-            )
+        context["interest_rate"] = (
+            interest_history.interest_rate
+            if interest_history
+            else Decimal("0.00")
         )
 
+        return context
 
-        wallet.available_balance-=amount
+    @transaction.atomic
+    def form_valid(self, form):
 
-        wallet.locked_balance+=amount
+        investor = self.get_investor()
 
-        wallet.save()
-
-
-        liquidity.total_available+=amount
-        liquidity.total_invested+=amount
-
-        liquidity.save()
-
-
-        # Pass the necessary information to the template
-        form = InvestorLendForm()
-
-        return render(request, template_name, {
-            'form': form,
-            'amount': amount,
-            'duration_days': duration,
-        })
-
-    def post(self, request):
-        username = request.session.get('username')
-        if not username:
-            return redirect('login')
-
-        investor = get_object_or_404(Investor, username=username)
-        liquidity=LiquidityPool.objects.first()
-        wallet=Wallet.objects.get(
+        wallet = Wallet.objects.select_for_update().get(
             investor=investor
         )
-        
-        amount=form.cleaned_data[
-            'amount'
-        ]
 
-        duration=form.cleaned_data[
-            'duration_days'
-        ]
-        
-        if wallet.available_balance<amount:
+        liquidity = LiquidityPool.objects.select_for_update().first()
+
+        interest_history = InterestHistory.objects.first()
+
+        if interest_history is None:
 
             messages.error(
                 self.request,
-                "Insufficient wallet balance"
+                "No interest rate has been configured."
             )
 
-            return redirect(
-                self.template_name
-            )
-            
-        interest=liquidity.current_interest_rate
+            return redirect("borrow-money")
 
+        annual_rate = interest_history.interest_rate
 
-        expected_return=amount + (
-            amount *
-            Decimal(
-                interest/100
+        principal = form.cleaned_data["principal"]
+
+        duration = form.cleaned_data["duration_days"]
+
+        # Check liquidity
+        if liquidity.total_available < principal:
+
+            messages.error(
+                self.request,
+                "The liquidity pool currently has insufficient funds."
             )
+
+            return redirect("borrow-money")
+
+        # Calculate compounded repayment
+        amount_due = calculate_daily_compound(
+            principal,
+            annual_rate,
+            duration
         )
 
+        # Interest payable (collateral)
+        interest_amount = (
+            amount_due - principal
+        ).quantize(
+            Decimal("0.01")
+        )
 
-        wallet.available_balance-=amount
+        # Verify collateral
+        if wallet.available_balance < interest_amount:
 
-        wallet.locked_balance+=amount
+            messages.error(
+                self.request,
+                (
+                    "Your available wallet balance is too low to "
+                    "cover the required loan collateral "
+                    f"(KSh {interest_amount:,.2f})."
+                )
+            )
+
+            return redirect("borrow-money")
+
+        # ------------------------------------
+        # Lock the collateral (interest)
+        # ------------------------------------
+
+        wallet.available_balance -= interest_amount
+
+        wallet.locked_balance += interest_amount
+
+        # ------------------------------------
+        # Credit borrowed money
+        # ------------------------------------
+
+        wallet.available_balance += principal
+
+        wallet.borrowed_balance += principal
 
         wallet.save()
 
+        # ------------------------------------
+        # Update Liquidity Pool
+        # ------------------------------------
 
-        liquidity.total_available+=amount
-        liquidity.total_invested+=amount
+        liquidity.total_available -= principal
+
+        liquidity.total_borrowed += principal
+
+        liquidity.total_collateral += interest_amount
 
         liquidity.save()
-        form = InvestorLendForm(request.POST)
 
-        if form.is_valid():
-            loan = form.save(
-                commit=False
+        # ------------------------------------
+        # Save Loan
+        # ------------------------------------
+
+        Loan.objects.create(
+
+            borrower=investor,
+
+            principal=principal,
+
+            collateral=interest_amount,
+
+            interest_rate=annual_rate,
+
+            amount_due=amount_due,
+
+            duration_days=duration,
+
+            due_date=timezone.now() + timedelta(
+                days=duration
             )
 
-            principal = form.cleaned_data[
-                'principal'
-            ]
+        )
 
-            collateral = form.cleaned_data[
-                'collateral'
-            ]
+        messages.success(
 
-            if wallet is None:
+            self.request,
 
-                messages.error(
-                    request,
-                    "Wallet does not exist"
-                )
-
-                return redirect(
-                    self.template_name
-                )
-
-            if wallet.collateral_balance < collateral:
-
-                messages.error(
-                    request,
-                    "Insufficient collateral balance"
-                )
-
-                return redirect(
-                    self.template_name
-                )
-            if self.liquidity.total_available < principal:
-
-                messages.error(
-                    request,
-                    "System currently has insufficient funds"
-                )
-
-                return redirect(
-                    self.template_name
-                )
-
-            loan.borrower = investor
-
-            loan.interest_rate = self.interest_rate
-
-            loan.due_date = (
-                timezone.now() +
-                timedelta(
-                    days=loan.duration_days
-                )
+            (
+                f"Loan approved successfully.\n\n"
+                f"Borrowed Amount: KSh {principal:,.2f}\n"
+                f"Interest (Locked Collateral): KSh {interest_amount:,.2f}\n"
+                f"Total Repayment: KSh {amount_due:,.2f}\n"
+                f"Repayment Period: {duration} day(s)."
             )
 
-            loan.save()
+        )
 
-            wallet.available_balance += principal
-
-            wallet.borrowed_balance += principal
-
-            wallet.collateral_balance -= collateral
-
-            wallet.save()
-
-            self.liquidity.total_available -= principal
-
-            self.liquidity.total_borrowed += principal
-
-            self.liquidity.save()
-
-            messages.success(
-                request,
-                "Loan approved successfully"
-            )
-
-            return redirect(
-                self.template_name
-            )
+        return redirect("borrow-money")
 
 class BuyStockView(FormView):
     

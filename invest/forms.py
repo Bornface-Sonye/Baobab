@@ -108,34 +108,45 @@ class ResetForm(forms.Form):  # Use forms.Form instead of ModelForm
 class InvestorLendForm(forms.Form):
 
     amount = forms.DecimalField(
+
+        label="Amount",
+
         max_digits=15,
+
         decimal_places=2,
-        min_value=100,
+
+        min_value=Decimal("100"),
+
         widget=forms.NumberInput(
             attrs={
-                'class':'form-control',
-                'placeholder':'Enter amount'
+                "class":"form-control",
+                "placeholder":"Enter amount to invest"
             }
         )
     )
 
     duration_days = forms.IntegerField(
+
+        label="Investment Duration",
+
         min_value=1,
+
         widget=forms.NumberInput(
             attrs={
-                'class':'form-control',
-                'placeholder':'Duration in days'
+                "class":"form-control",
+                "placeholder":"Enter duration in days"
             }
         )
     )
 
     def clean_amount(self):
 
-        amount=self.cleaned_data['amount']
+        amount = self.cleaned_data["amount"]
 
-        if amount<=0:
+        if amount <= 0:
+
             raise ValidationError(
-                "Amount must be greater than zero"
+                "Investment amount must be greater than zero."
             )
 
         return amount
@@ -144,61 +155,109 @@ class InvestorLendForm(forms.Form):
 class BorrowForm(forms.ModelForm):
 
     class Meta:
+
         model = Loan
 
         fields = [
-            'principal',
-            'duration_days'
+            "principal",
+            "duration_days",
         ]
 
         widgets = {
 
-            'principal': forms.NumberInput(
+            "principal": forms.NumberInput(
                 attrs={
-                    'placeholder': 'Enter amount to borrow',
-                    'class': 'form-control'
+                    "class": "form-control",
+                    "placeholder": "Enter amount to borrow",
+                    "min": "100"
                 }
             ),
-            #Ensure to Restrict Investment duration for Borrowed money to Days remaining to repay the Loan
-            'duration_days': forms.NumberInput(
+
+            "duration_days": forms.NumberInput(
                 attrs={
-                    'placeholder': 'Loan period in days',
-                    'class': 'form-control'
+                    "class": "form-control",
+                    "placeholder": "Enter loan duration (days)",
+                    "min": "1"
                 }
-            )
+            ),
+
+        }
+
+        labels = {
+
+            "principal": "Loan Amount",
+
+            "duration_days": "Loan Duration (Days)",
+
+        }
+
+        help_texts = {
+
+            "principal": "Enter the amount you wish to borrow.",
+
+            "duration_days": "Enter the repayment period in days.",
 
         }
 
     def __init__(self, *args, **kwargs):
 
         self.interest_rate = kwargs.pop(
-            'interest_rate',
-            Decimal('10')
+            "interest_rate",
+            Decimal("0.00")
         )
 
         super().__init__(*args, **kwargs)
+
+    def clean_principal(self):
+
+        principal = self.cleaned_data["principal"]
+
+        if principal <= 0:
+
+            raise ValidationError(
+                "Loan amount must be greater than zero."
+            )
+
+        if principal < Decimal("100"):
+
+            raise ValidationError(
+                "Minimum loan amount is KSh 100."
+            )
+
+        return principal
+
+    def clean_duration_days(self):
+
+        duration = self.cleaned_data["duration_days"]
+
+        if duration <= 0:
+
+            raise ValidationError(
+                "Loan duration must be greater than zero."
+            )
+
+        if duration > 3650:
+
+            raise ValidationError(
+                "Loan duration cannot exceed 3650 days."
+            )
+
+        return duration
 
     def clean(self):
 
         cleaned_data = super().clean()
 
-        principal = cleaned_data.get(
-            'principal'
-        )
+        principal = cleaned_data.get("principal")
 
+        duration = cleaned_data.get("duration_days")
 
-        if principal:
+        if principal and duration:
 
-            interest_amount = (
-                principal *
-                self.interest_rate /
-                Decimal('100')
-            )
-            #Here, Collateral is tracked from the given Investor's Wallet; to remove the error, I have placed Principal for Collateral, Ensure to Replace
-            if principal < interest_amount:
+            if duration < 1:
 
-                raise forms.ValidationError(
-                    f"Collateral cannot cover interest amount of Ksh {interest_amount}"
+                raise ValidationError(
+                    "Invalid loan duration."
                 )
 
         return cleaned_data
