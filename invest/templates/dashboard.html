@@ -1,308 +1,258 @@
-{% extends 'base_dashboard.html' %}
-{% load static %}
+{% extends 'cod_base_dashboard.html' %}
 
 {% block content %}
+<style>
+    /* Sidebar styling */
+    .sidebar-card {
+        background-color: #f8f9fa;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        padding: 15px;
+        margin-bottom: 20px;
+    }
 
-<link rel="stylesheet"
-href="{% static 'css/investment_dashboard.css' %}">
+    .sidebar-header {
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: #343a40;
+        margin-bottom: 10px;
+    }
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    .stat-item {
+        font-size: 1rem;
+        color: #555;
+        margin-bottom: 8px;
+        font-weight: 500;
+    }
 
-<div class="container-fluid dashboard-container">
+    /* Main content styling */
+    .card-header {
+        background-color: #343a40;
+        color: white;
+    }
 
+    .card-footer {
+        background-color: #f8f9fa;
+        font-size: 0.9rem;
+    }
 
-<!-- ========================= -->
-<!-- Welcome -->
-<!-- ========================= -->
+    .list-group-item {
+        border-radius: 5px;
+        margin-bottom: 10px;
+    }
+</style>
 
-<div class="welcome-card">
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-lg-3">
+            <!-- Sidebar Card -->
+            <div class="sidebar-card">
+                <div class="sidebar-header">
+                    <p class="stat-item">Phone Number: {{ phone_number }}</p>
+                </div>
+            </div>
+            <div class="sidebar-card">
+                <div class="sidebar-header">
+                    Welcome  Back !!!
+                </div>
+                <div class="sidebar-header">
+                    Welcome, {{ last_name }}
+                </div>
+                <p class="stat-item">Wallet Balance: <i>KES {{wallet.available_balance}}</i></p>
+                <p class="stat-item">Investment Balance: <i>KES {{total_invested}}</i></p>
+                <p class="stat-item">Borrowed Balance: <i>KES {{wallet.borrowed_balance}}</i></p>
+            </div>
+        </div>
 
-    <div>
+        <div class="col-lg-9">
+            <!-- Main content area -->
+            <div class="card">
+                <div class="sidebar-card">
+                    <div class="sidebar-header">
+                        Welcome  Back !!!
+                    </div>
+                    <div class="sidebar-header">
+                        Welcome, {{ last_name }}
+                    </div>
+                    <p class="stat-item">Wallet Balance: <i>KES {{wallet.available_balance}}</i></p>
+                    <p class="stat-item">Investment Balance: <i>KES {{total_invested}}</i></p>
+                    <p class="stat-item">Borrowed Balance: <i>KES {{wallet.borrowed_balance}}</i></p>
+                </div>
 
-        <h2>
+                <!-- ========================= -->
+                <!-- INTEREST GRAPH -->
+                <!-- ========================= -->
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Interest Rate Deviation (Last 24 Hours)</h5>
+                            <canvas id="interestChart">
 
-            Welcome Back,
-            {{phone_number}}
+                            </canvas>
+                        </div>
 
-        </h2>
+                        <div class="col-md-6">
+                            <h5>Stocks</h5>
+                            <canvas id="interestChart">
 
-        <p>
-
-            Monitor investments, loans and interest movement.
-
-        </p>
-
+                            </canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer text-center">
+                    Powered by Azdak's Software Solution
+                </div>
+            </div>
+        </div>
     </div>
-
 </div>
-
-
-<!-- ========================= -->
-<!-- BALANCE CARDS -->
-<!-- ========================= -->
-
-<div class="row mb-4">
-
-
-<div class="col-lg-4">
-
-<div class="balance-card wallet-card">
-
-<i class="mdi mdi-wallet"></i>
-
-<h5>
-
-Wallet Balance
-
-</h5>
-
-<h3>
-
-KES {{wallet.available_balance}}
-
-</h3>
-
-</div>
-
-</div>
-
-
-
-<div class="col-lg-4">
-
-<div class="balance-card investment-card">
-
-<i class="mdi mdi-finance"></i>
-
-<h5>
-
-Investment Balance
-
-</h5>
-
-<h3>
-
-KES {{total_invested}}
-
-</h3>
-
-</div>
-
-</div>
-
-
-
-<div class="col-lg-4">
-
-<div class="balance-card borrowed-card">
-
-<i class="mdi mdi-bank"></i>
-
-<h5>
-
-Borrowed Balance
-
-</h5>
-
-<h3>
-
-KES {{wallet.borrowed_balance}}
-
-</h3>
-
-</div>
-
-</div>
-
-
-</div>
-
-
-<!-- ========================= -->
-<!-- INTEREST GRAPH -->
-<!-- ========================= -->
-
-<div class="row">
-
-<div class="col-lg-12">
-
-<div class="graph-card">
-
-<h4>
-
-Interest Rate Deviation (Last 24 Hours)
-
-</h4>
-
-<canvas
-id="interestChart">
-
-</canvas>
-
-</div>
-
-</div>
-
-</div>
-
-
-</div>
-
-
-
 <script>
+    const labels=[
 
+    {% for item in graph_labels %}
 
-const labels=[
+    "{{item}}",
 
-{% for item in graph_labels %}
+    {% endfor %}
 
-"{{item}}",
+    ]
 
-{% endfor %}
 
-]
+    const rates=[
 
+    {% for item in graph_values %}
 
-const rates=[
+    {{item}},
 
-{% for item in graph_values %}
+    {% endfor %}
 
-{{item}},
+    ]
 
-{% endfor %}
 
-]
 
+    const ctx=document.getElementById(
+    'interestChart'
+    )
 
 
-const ctx=document.getElementById(
-'interestChart'
-)
+    const chart=new Chart(
 
+    ctx,
 
-const chart=new Chart(
+    {
 
-ctx,
+    type:'line',
 
-{
+    data:{
 
-type:'line',
+    labels:labels,
 
-data:{
+    datasets:[{
 
-labels:labels,
+    label:'Interest Rate (%)',
 
-datasets:[{
+    data:rates,
 
-label:'Interest Rate (%)',
+    fill:true,
 
-data:rates,
+    tension:.45,
 
-fill:true,
+    pointRadius:0,
 
-tension:.45,
+    borderWidth:3
 
-pointRadius:0,
+    }]
 
-borderWidth:3
+    },
 
-}]
+    options:{
 
-},
+    responsive:true,
 
-options:{
+    maintainAspectRatio:false,
 
-responsive:true,
+    animation:{
 
-maintainAspectRatio:false,
+    duration:1000
 
-animation:{
+    },
 
-duration:1000
+    interaction:{
 
-},
+    intersect:false,
 
-interaction:{
+    mode:'index'
 
-intersect:false,
+    },
 
-mode:'index'
+    scales:{
 
-},
+    x:{
 
-scales:{
+    title:{
 
-x:{
+    display:true,
 
-title:{
+    text:'Hours'
 
-display:true,
+    }
 
-text:'Hours'
+    },
 
-}
+    y:{
 
-},
+    title:{
 
-y:{
+    display:true,
 
-title:{
+    text:'Interest Rate %'
 
-display:true,
+    }
 
-text:'Interest Rate %'
+    }
 
-}
+    }
 
-}
+    }
 
-}
+    }
 
-}
+    )
 
-}
 
-)
 
+    function updateGraph(){
 
+    fetch('/interest-graph-data/')
 
-function updateGraph(){
+    .then(
 
-fetch('/interest-graph-data/')
+    response=>response.json()
 
-.then(
+    )
 
-response=>response.json()
+    data=>{
 
-)
+    chart.data.labels=data.time
 
-.then(
+    chart.data.datasets[0].data=data.rate
 
-data=>{
+    chart.update()
 
-chart.data.labels=data.time
+    }
 
-chart.data.datasets[0].data=data.rate
+    )
 
-chart.update()
+    }
 
-}
 
-)
+    setInterval(
 
-}
+    updateGraph,
 
+    1000
 
-setInterval(
-
-updateGraph,
-
-1000
-
-)
-
-
-</script>
+    )
+    </script>
 
 {% endblock %}
