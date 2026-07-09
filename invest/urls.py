@@ -15,6 +15,11 @@ urlpatterns = [
     # DASHBOARD
     # =========================
     path('dashboard/', views.DashboardView.as_view(), name='dashboard'),
+    path(
+        "interest-graph-data/",
+        views.dashboard_graph_data,
+        name="dashboard_graph_data"
+    ),
     
     # =========================
     # INVESTMENT

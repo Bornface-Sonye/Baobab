@@ -197,328 +197,334 @@ class ResetPasswordConfirmView(View):
         return render(request, self.template_name, {'form': form, 'token': token, 'error_message': "Invalid form submission."})
 
 
-# =========================
-# DASHBOARD
-# =========================
-class DashboardView(View):
-    def get(self, request):
-        username = request.session.get('username')
-        if not username:
-            return redirect('login')
+from decimal import Decimal
+from django.http import JsonResponse
+from django.views import View
 
-        investor = Investor.objects.filter(username=username).first()
-        if not investor:
-            return redirect('login')
-
-        user = System_User.objects.get(username=username)
-
-
-        context = {
-            'last_name': investor.last_name,
-            'user': user,
-        }
-
-        return render(request, 'dashboard.html', context)
-
-
-# ====================================================
-# INTEREST RATE ENGINE
-# Updates every 10 seconds
-# ====================================================
+from .models import LiquidityPool, InterestHistory
+from .utils import MachineLearningModel, InterestRate
 
 
 class InterestRateEngineView(View):
+    """
+    Runs the ML model and stores the predicted
+    interest rate in InterestHistory.
+
+    This view is intended to be executed every
+    60 seconds by APScheduler/Celery/Cron.
+    """
 
     def get(self, request):
-        liquidity = get_object_or_404(LiquidityPool).first()
 
-    def post(self, form):
-        
-        # Fetch GroupMember related to the borrower's national_id
-        liquidity = get_object_or_404(LiquidityPool).first()
-        total_available = liquidity.total_available
-        total_borrowed = liquidity.total_borrowed
-        total_invested = liquidity.total_invested
-        total_collateral = liquidity.total_collateral
-        current_interest_rate = liquidity.current_interest_rate
-        
-            
-        # Test MachineLearningModel class
-        ml_model = MachineLearningModel() 
-        mse, r2 = ml_model.accuracy()
-        loan_proposal = InterestRate()
-        loan_proposal.data_retrieval('Mary', total_available, total_borrowed, total_invested, total_collateral, current_interest_rate)
-        prediction_result = loan_proposal.data_preparation()
-        result = float(f"{float(prediction_result):.2f}")
-        
-        
-        return render(self.request, self.template_name, {
-            'success_message': f'Interest Update successful. Show Deviation on Dashboard Graph'
-        })
+        liquidity = LiquidityPool.objects.first()
 
-    def form_invalid(self, form):
-        print(form.errors)  # Print form errors to console or log them for debugging
-        return render(self.request, self.template_name, {
-            'form': form,
-            'error_message': f'Form Invalid. Errors: {form.errors}',
+        if liquidity is None:
+            return JsonResponse({
+                "status": "error",
+                "message": "Liquidity Pool not found."
+            })
+
+        # Ensure the model exists
+        MachineLearningModel()
+
+        predictor = InterestRate()
+
+        predicted_rate = predictor.predict(
+            liquidity.total_available,
+            liquidity.total_borrowed,
+            liquidity.total_invested,
+            liquidity.total_collateral,
+            liquidity.current_interest_rate
+        )
+
+        # Save a new history record
+        InterestHistory.objects.create(
+            interest_rate=Decimal(str(predicted_rate)),
+            liquidity=liquidity.total_available
+        )
+
+        # Keep only the most recent 1440 records
+        history = InterestHistory.objects.order_by("-timestamp")
+
+        if history.count() > 1440:
+            for record in history[1440:]:
+                record.delete()
+
+        deviation = round(
+            predicted_rate -
+            float(liquidity.current_interest_rate),
+            2
+        )
+
+        return JsonResponse({
+
+            "status": "success",
+
+            "current_rate": float(
+                liquidity.current_interest_rate
+            ),
+
+            "predicted_rate": predicted_rate,
+
+            "deviation": deviation
+
         })
-# ====================================================
-# DASHBOARD
-# ====================================================
+        
+
+        
+from django.views.generic import TemplateView
+from django.shortcuts import render, redirect, get_object_or_404
+from django.db.models import Sum
+
+from .models import (
+    System_User,
+    Investor,
+    Wallet,
+    Investment,
+    Loan,
+    Stock,
+    LiquidityPool,
+    InterestHistory
+)
 
 
 class DashboardView(TemplateView):
 
+    template_name = "dashboard.html"
 
-    def get(self,request):
+    def get(self, request):
 
+        username = request.session.get("username")
 
-        username=request.session.get(
-            'username'
-        )
         if not username:
-
-            return redirect(
-                'login'
-            )
-
+            return redirect("login")
 
         try:
 
-            user=System_User.objects.get(
+            user = System_User.objects.get(
                 username=username
             )
 
         except System_User.DoesNotExist:
 
-            return redirect(
-                'login'
-            )
+            return redirect("login")
 
+        investor = get_object_or_404(
+            Investor,
+            username=username
+        )
 
-        # TEMPORARY
-        # until Investor links to System_User
-
-        investor = get_object_or_404(Investor, username=username)
-
-
-        if not investor:
-
-            return redirect(
-                'login'
-            )
-
-
-        wallet,created=Wallet.objects.get_or_create(
-
+        wallet, created = Wallet.objects.get_or_create(
             investor=investor
         )
 
-
-        total_invested=Investment.objects.filter(
-
+        total_invested = Investment.objects.filter(
             investor=investor
         ).aggregate(
+            total=Sum("amount")
+        )["total"] or 0
 
-            Sum(
-                'amount'
-            )
-
-        )['amount__sum'] or 0
-
-
-
-        total_loan=Loan.objects.filter(
-
+        total_loan = Loan.objects.filter(
             borrower=investor
         ).aggregate(
+            total=Sum("principal")
+        )["total"] or 0
 
-            Sum(
-                'principal'
-            )
-
-        )['principal__sum'] or 0
-
-
-
-        recent_investments=Investment.objects.filter(
-
+        recent_investments = Investment.objects.filter(
             investor=investor
-
         ).order_by(
-
-            '-start_date'
-
+            "-start_date"
         )[:5]
 
-
-
-        recent_loans=Loan.objects.filter(
-
+        recent_loans = Loan.objects.filter(
             borrower=investor
-
         ).order_by(
-
-            '-due_date'
-
+            "-start_date"
         )[:5]
 
+        stocks = Stock.objects.all()
 
+        liquidity = LiquidityPool.objects.first()
 
-        stocks=Stock.objects.all()
-
-
-
-        liquidity=LiquidityPool.objects.first()
-
-
-        graph=InterestHistory.objects.filter(
-
-            timestamp__gte=
-
-            timezone.now()
-
-            -
-
-            timedelta(
-                hours=24
-            )
-
-        ).order_by(
-
-            'timestamp'
-
+        graph = InterestHistory.objects.order_by(
+            "timestamp"
         )
 
+        current_rate = 0
+        predicted_rate = 0
+        deviation = 0
 
+        if liquidity:
 
-        context={
+            current_rate = float(
+                liquidity.current_interest_rate
+            )
 
-            'phone_number': investor.phone_number,
-            'investor': investor,
-            'wallet': wallet,
-            'total_invested': total_invested,
-            'total_loan': total_loan,
-            'recent_investments': recent_investments,
-            'recent_loans': recent_loans,
-            'stocks': stocks,
-            'liquidity': liquidity,
-            'interest_history': graph,
-            'user': user,
-            'graph_labels':[
+        if graph.exists():
 
-                x.timestamp.strftime(
-                    "%H:%M:%S"
-                )
+            latest_prediction = graph.last()
 
-                for x in graph
+            predicted_rate = float(
+                latest_prediction.interest_rate
+            )
+
+            deviation = round(
+                predicted_rate - current_rate,
+                2
+            )
+
+        context = {
+
+            "user": user,
+
+            "investor": investor,
+
+            "phone_number": investor.phone_number,
+
+            "wallet": wallet,
+
+            "total_invested": total_invested,
+
+            "total_loan": total_loan,
+
+            "recent_investments": recent_investments,
+
+            "recent_loans": recent_loans,
+
+            "stocks": stocks,
+
+            "liquidity": liquidity,
+
+            "interest_history": graph,
+
+            "current_rate": current_rate,
+
+            "predicted_rate": predicted_rate,
+
+            "deviation": deviation,
+
+            "graph_labels": [
+
+                item.timestamp.strftime("%H:%M:%S")
+
+                for item in graph
 
             ],
-            'graph_values':[
 
-                float(
-                    x.interest_rate
-                )
+            "graph_values": [
 
-                for x in graph
+                float(item.interest_rate)
 
-            ],
-
-            'stock_labels':[
-
-                x.symbol
-                for x in stocks
+                for item in graph
 
             ],
 
-            'stock_values':[
+            "stock_labels": [
 
-                float(
-                    x.current_price
-                )
+                stock.stock_name
 
-                for x in stocks
+                for stock in stocks
+
+            ],
+
+            "stock_values": [
+
+                float(stock.current_price)
+
+                for stock in stocks
 
             ]
 
         }
 
-
-        return render(request, 'dashboard.html', context)
-
-
-
-# ====================================================
-# AJAX GRAPH UPDATE
-# ====================================================
+        return render(
+            request,
+            self.template_name,
+            context
+        )
+        
+from django.http import JsonResponse
+from .models import InterestHistory, LiquidityPool, Stock
 
 
 def dashboard_graph_data(request):
+    """
+    Returns live dashboard data for AJAX updates.
+    """
 
+    liquidity = LiquidityPool.objects.first()
 
-    graph=InterestHistory.objects.filter(
+    graph = InterestHistory.objects.order_by("timestamp")
 
-        timestamp__gte=
+    stocks = Stock.objects.all()
 
-        timezone.now()
+    graph_labels = [
+        item.timestamp.strftime("%H:%M:%S")
+        for item in graph
+    ]
 
-        -
+    graph_values = [
+        float(item.interest_rate)
+        for item in graph
+    ]
 
-        timedelta(
-            hours=24
-        )
+    liquidity_values = [
+        float(item.liquidity)
+        for item in graph
+    ]
 
-    ).order_by(
-        'timestamp'
+    stock_labels = [
+        stock.stock_name
+        for stock in stocks
+    ]
+
+    stock_values = [
+        float(stock.current_price)
+        for stock in stocks
+    ]
+
+    current_rate = (
+        float(liquidity.current_interest_rate)
+        if liquidity else 0
     )
 
+    predicted_rate = (
+        graph_values[-1]
+        if graph_values else current_rate
+    )
 
-    stocks=Stock.objects.all()
-
+    deviation = round(
+        predicted_rate - current_rate,
+        2
+    )
 
     return JsonResponse({
 
-        'time':[
+        "graph_labels": graph_labels,
 
-            x.timestamp.strftime(
-                "%H:%M:%S"
-            )
+        "graph_values": graph_values,
 
-            for x in graph
+        "liquidity": liquidity_values,
 
-        ],
+        "current_rate": current_rate,
 
-        'rate':[
+        "predicted_rate": predicted_rate,
 
-            float(
-                x.interest_rate
-            )
+        "deviation": deviation,
 
-            for x in graph
+        "stock_labels": stock_labels,
 
-        ],
+        "stock_values": stock_values,
 
-        'stocks':[
+        "samples": len(graph_values),
 
-            x.symbol
+        "latest_time": (
+            graph_labels[-1]
+            if graph_labels else ""
+        )
 
-            for x in stocks
-
-        ],
-
-        'stock_prices':[
-
-            float(
-                x.current_price
-            )
-
-            for x in stocks
-
-        ]
-
-    })    
-
-
+    })
+    
 
 def calculate_daily_compound(principal, annual_rate, days):
     """
